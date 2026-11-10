@@ -245,3 +245,16 @@ label.f{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 .rt-s{font-size:12.5px}
 .rt-c{font-size:11.5px}
 .rt .btn.sm,.rt .chip{font-size:13px;min-height:30px}
+
+#kp-root .kp{position:fixed;left:0;right:0;bottom:0;z-index:9;background:#E9E6DD;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+.kp-in{max-width:480px;margin:0 auto}
+.kp-g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.kpk{border:0;background:#fff;border-radius:10px;font-size:24px;font-weight:500;min-height:52px;color:var(--ink);box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.kpk:active{background:var(--teal-l)}
+.kp-b{display:grid;grid-template-columns:1fr 1fr 2fr;gap:6px;margin-top:6px}
+.kpb{border:0;background:#fff;border-radius:10px;min-height:48px;font-size:16px;color:var(--teal);font-weight:500}
+.kpb.pri{background:var(--teal);color:#fff;font-weight:600}
+body.kpopen #app{padding-bottom:330px}
+body.kpopen .nav,body.kpopen .stickysave{display:none}
+body.kpopen #toast{bottom:340px}
+#toast{z-index:10}

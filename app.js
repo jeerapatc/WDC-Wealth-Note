@@ -209,7 +209,7 @@ const ui = {
   tab: 'entry',
   calY: now.getFullYear(), calM: now.getMonth(), calSel: ymd(now),
   repMode: 'month', repY: now.getFullYear(), repM: now.getMonth(),
-  budY: now.getFullYear(), budM: now.getMonth()
+  budY: now.getFullYear(), budM: now.getMonth(), kp: false, native: false
 };
 let form = { type: 'expense', cat: '', amount: '', note: '', date: today() };
 let reg = { mode: 'worker', name: '', age: '', phone: '', school: '', cash: '', consent: false };
@@ -368,7 +368,47 @@ function sheetPolicy() {
 const TABS = [['entry', 'บันทึก'], ['cal', 'ปฏิทิน'], ['rep', 'รายงาน'], ['bud', 'งบ']];
 const TITLES = { entry: 'บันทึก', cal: 'ปฏิทิน', rep: 'รายงาน', bud: 'งบประมาณ' };
 
+/* ---------- แป้นตัวเลขของแอป (หน้าบันทึก) ---------- */
+const KP_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'];
+function showKp() {
+  const r = $('#kp-root'); if (!r) return;
+  ui.kp = true;
+  r.innerHTML = `<div class="kp" role="group" aria-label="แป้นตัวเลข"><div class="kp-in"><div class="kp-g">${KP_KEYS.map(k => `<button class="kpk" data-act="kp" data-k="${k}" aria-label="${k === '⌫' ? 'ลบ' : k === '.' ? 'จุดทศนิยม' : k}">${k}</button>`).join('')}</div>
+    <div class="kp-b"><button class="kpb" data-act="kpnative">พิมพ์เอง</button><button class="kpb" data-act="kpclose">เสร็จ</button><button class="kpb pri" data-act="submit">บันทึก</button></div></div></div>`;
+  document.body.classList.add('kpopen');
+  const f = $('#f-amt'); if (f) f.scrollIntoView({ block: 'center' });
+}
+function hideKp() {
+  ui.kp = false;
+  const r = $('#kp-root'); if (r) r.innerHTML = '';
+  document.body.classList.remove('kpopen');
+}
+function kpPress(k) {
+  let v = String(form.amount || '');
+  if (k === '⌫') v = v.slice(0, -1);
+  else if (k === '.') { if (v.includes('.')) return; v = (v || '0') + '.'; }
+  else {
+    if (v.includes('.') ? v.split('.')[1].length >= 2 : v.length >= 10) return;
+    v = v === '0' ? k : v + k;
+  }
+  form.amount = v;
+  const f = $('#f-amt'); if (f) f.value = v;
+}
+document.addEventListener('focusin', e => {
+  if (e.target.id === 'f-amt' && !ui.native && !ui.kp) { e.target.blur(); showKp(); }
+});
+document.addEventListener('focusout', e => {
+  if (e.target.id === 'f-amt' && ui.native) setTimeout(() => { if (!document.activeElement || document.activeElement.id !== 'f-amt') ui.native = false; }, 80);
+});
+document.addEventListener('click', e => {
+  // แตะนอกช่องจำนวนเงินและแป้น: ปิดแป้น
+  if (!ui.kp) return;
+  if (e.target.closest('.kp') || e.target.closest('#f-amt') || e.target.closest('.tile') || e.target.closest('[data-act]')) return;
+  hideKp();
+});
+
 function render() {
+  if (ui.kp && ui.tab !== 'entry') hideKp();
   const app = $('#app');
   if (!S.profile) {
     app.className = 'reg';
@@ -437,7 +477,7 @@ function viewEntry() {
   <label class="f" for="f-note">โน้ต (ไม่บังคับ)</label>
   <input id="f-note" class="in" data-bind="form.note" placeholder="เช่น ข้าวมันไก่" value="${esc(form.note)}" maxlength="80">
   <label class="f" for="f-amt">จำนวนเงิน (บาท)</label>
-  <input id="f-amt" class="in" data-bind="form.amount" data-num="1" inputmode="decimal" placeholder="0" value="${esc(form.amount)}">
+  <input id="f-amt" class="in" data-bind="form.amount" data-num="1" inputmode="none" autocomplete="off" placeholder="0" value="${esc(form.amount)}">
   <label class="f">หมวด</label>
   <div class="tiles">${cats.map(c => `<button class="tile ${form.cat === c.id ? 'sel' : ''} ${form.type}" data-act="pickcat" data-id="${c.id}"><span class="ti">${c.icon || '🏷️'}</span><span>${esc(c.name)}</span></button>`).join('')}<button class="tile add" data-act="newcat"><span class="ti">➕</span><span>เพิ่มหมวดเอง</span></button></div>
   <div class="stickysave"><button class="btn" data-act="submit">บันทึก</button></div>
@@ -915,6 +955,13 @@ function act(a, t) {
       S.cash = { amt: r2(v), ts: Date.now(), date: today() };
       save(); cashf = { amt: '' }; closeSheet(); render(); toast('บันทึกยอดแล้ว'); break;
     }
+    case 'kp': kpPress(t.dataset.k); break;
+    case 'kpclose': hideKp(); break;
+    case 'kpnative': {
+      ui.native = true; hideKp();
+      const f = $('#f-amt'); if (f) { f.setAttribute('inputmode', 'decimal'); f.blur(); f.focus(); }
+      break;
+    }
     case 'tip': tipIdx = nextTip(tipIdx); render(); break;
     case 'dprev': form.date = addDays(form.date || today(), -1); render(); break;
     case 'dnext': form.date = addDays(form.date || today(), 1); render(); break;
@@ -949,6 +996,7 @@ function act(a, t) {
       if (!S.logDays.includes(today())) S.logDays.push(today());
       save();
       form.amount = ''; form.note = ''; form.cat = '';
+      hideKp(); ui.native = false;
       toast('บันทึกแล้ว'); render(); break;
     }
     case 'edit': {
