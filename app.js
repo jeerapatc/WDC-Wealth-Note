@@ -24,7 +24,7 @@ const DEFAULT_EXP = [
   ['food', 'อาหาร', 'need', '🍚'], ['clothes', 'เสื้อผ้า', 'need', '👕'], ['travel', 'เดินทาง', 'need', '🚌'],
   ['home', 'ที่อยู่อาศัย', 'need', '🏠'], ['health', 'ค่ารักษา', 'need', '💊'], ['insurance', 'ประกัน', 'need', '🛡️'],
   ['saving', 'เงินออม', 'save', '💰'], ['invest', 'ลงทุน', 'save', '📈'],
-  ['social', 'สังสรรค์', 'want', '🍻'], ['shop', 'ช้อปปิ้ง', 'want', '🛍️'], ['sub', 'Subscription', 'want', '📱'],
+  ['social', 'สังสรรค์', 'want', '🎉'], ['shop', 'ช้อปปิ้ง', 'want', '🛍️'], ['sub', 'Subscription', 'want', '📱'],
   ['care', 'ดูแลตัวเอง', 'want', '💆'], ['gift', 'ของขวัญ', 'want', '🎁'],
   ['exercise', 'ออกกำลังกาย', 'want', '🏃'], ['trip', 'ท่องเที่ยว', 'want', '✈️']
 ];
@@ -175,6 +175,7 @@ function load() {
   return mem || fresh();
 }
 function migrate(o) {
+  (o.expCats || []).forEach(c => { if (c.id === 'social' && c.icon === '🍻') c.icon = '🎉'; });
   if (o.mig >= 6) return o;
   if (!(o.mig >= 5)) migrate5(o);
   if (!o.budOn) o.budOn = {};
