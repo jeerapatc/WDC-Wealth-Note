@@ -38,6 +38,16 @@ const incomeDefaults = mode => [
 
 /* ================= อัตราส่วนการเงิน ================= */
 // เงินสด/เงินฝากตอนนี้ = ยอดที่ผู้ใช้กรอก + รายรับ - รายจ่าย ที่บันทึกหลังจากนั้น (หมวด saving ยังอยู่ในเงินฝาก, หมวดอื่นถือว่าออกจากเงินสด)
+// รายจ่ายเฉลี่ยต่อเดือนจากรายการที่บันทึก (ไม่รวมออม/ลงทุน): เฉลี่ยสูงสุด 3 เดือนที่ผ่านมา ถ้ายังไม่มีใช้เดือนนี้
+function autoAvgInfo() {
+  const now = new Date();
+  const living = (y, m) => monthTx(y, m).filter(t => t.type === 'expense' && groupOf(t.cat) !== 'save').reduce((x, t) => x + t.amount, 0);
+  let vals = [1, 2, 3].map(i => { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); return living(d.getFullYear(), d.getMonth()); }).filter(v => v > 0);
+  let basis = vals.length > 1 ? 'เฉลี่ย ' + vals.length + ' เดือนที่ผ่านมา' : 'เดือนที่ผ่านมา';
+  if (!vals.length) { const c = living(now.getFullYear(), now.getMonth()); if (c > 0) { vals = [c]; basis = 'เดือนนี้'; } }
+  if (!vals.length) return null;
+  return { avg: vals.reduce((x, v) => x + v, 0) / vals.length, basis };
+}
 function emergencyInfo() {
   if (!S.cash) return null;
   const a = S.cash, td = today();
@@ -48,13 +58,11 @@ function emergencyInfo() {
     if (!after) return;
     if (t.type === 'income') cash += t.amount; else if (t.cat !== 'saving') cash -= t.amount;
   });
-  const now = new Date();
-  const living = (y, m) => monthTx(y, m).filter(t => t.type === 'expense' && groupOf(t.cat) !== 'save').reduce((x, t) => x + t.amount, 0);
-  let vals = [1, 2, 3].map(i => { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); return living(d.getFullYear(), d.getMonth()); }).filter(v => v > 0);
-  let basis = vals.length > 1 ? 'เฉลี่ย ' + vals.length + ' เดือนที่ผ่านมา' : 'เดือนที่ผ่านมา';
-  if (!vals.length) { const c = living(now.getFullYear(), now.getMonth()); if (c > 0) { vals = [c]; basis = 'เดือนนี้'; } }
-  if (!vals.length) return { cash, avg: null };
-  const avg = vals.reduce((x, v) => x + v, 0) / vals.length;
+  const au = autoAvgInfo(), manual = S.avgExp > 0 ? S.avgExp : 0;
+  let avg = null, basis = '';
+  if (au && !(S.avgMode === 'manual' && manual)) { avg = au.avg; basis = au.basis; }
+  else if (manual) { avg = manual; basis = 'กำหนดเอง'; }
+  if (!avg) return { cash, avg: null };
   return { cash, avg, months: Math.max(0, cash) / avg, basis };
 }
 // เกณฑ์เงินสำรองฉุกเฉินตามที่ WDC กำหนด: ต่ำกว่า 3 เดือน = แย่, 3 ถึงต่ำกว่า 6 = พอใช้, 6-12 = ดี, เกิน 12 = แย่
@@ -79,7 +87,7 @@ function ratioCard(r) {
   } else html += '<div class="empty">ใส่รายรับก่อน ถึงจะคำนวณรายจ่ายต่อรายรับได้</div>';
   const e = emergencyInfo();
   if (!e) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>ใส่เงินสด/เงินฝากของคุณ เพื่อดูว่าเพียงพอกี่เดือน</small></div><button class="btn ghost sm" data-act="cashset">ใส่ยอดเงิน</button></div>`;
-  else if (!e.avg) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>มีเงิน ${money(e.cash)} ต้องมีรายจ่ายสักเดือนก่อน ถึงจะคำนวณได้</small></div></div>`;
+  else if (!e.avg) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>มีเงิน ${money(e.cash)} ใส่รายจ่ายเฉลี่ยต่อเดือนเอง ไปก่อนได้</small></div><button class="btn ghost sm" data-act="cashset">ใส่ยอด</button></div>`;
   else {
     const m = Math.round(e.months * 10) / 10;
     html += row('เงินสำรองฉุกเฉิน', `${money(e.cash)} ÷ ${money(e.avg)} ต่อเดือน (${e.basis})`, m + ' เดือน', emStatus(e.months), '(ดี 6-12 เดือน พอใช้ 3-5 เดือน ต่ำกว่า 3 หรือเกิน 12 ควรปรับ)');
@@ -151,7 +159,7 @@ function toast(msg) {
 /* ================= ข้อมูล ================= */
 let mem = null;
 const fresh = () => ({
-  v: 1, mig: 4, profile: null, cash: null,
+  v: 1, mig: 5, profile: null, cash: null, planInc: null, avgExp: null, avgMode: 'auto',
   expCats: DEFAULT_EXP.map(([id, name, group, icon]) => ({ id, name, group, icon, hidden: false })),
   incCats: [], tx: [], budgets: {}, recurring: [], logDays: [], skipKeys: []
 });
@@ -163,7 +171,15 @@ function load() {
   return mem || fresh();
 }
 function migrate(o) {
-  if (o.mig >= 4) return o;
+  if (o.mig >= 5) return o;
+  if (!(o.mig >= 4)) migrate4(o);
+  if (o.planInc === undefined) o.planInc = null;
+  if (o.avgExp === undefined) o.avgExp = null;
+  if (!o.avgMode) o.avgMode = 'auto';
+  o.mig = 5;
+  return o;
+}
+function migrate4(o) {
   if (!(o.mig >= 3)) migrate3(o);
   if (o.cash === undefined) o.cash = null;
   o.mig = 4;
@@ -213,7 +229,7 @@ const ui = {
 };
 let form = { type: 'expense', cat: '', amount: '', note: '', date: today() };
 let reg = { mode: 'worker', name: '', age: '', phone: '', school: '', cash: '', consent: false };
-let cashf = { amt: '' };
+let cashf = { amt: '', avg: '' };
 let sheet = null;
 let edit = null;
 let rec = { type: 'expense', cat: '', amount: '', day: '1', note: '' };
@@ -658,7 +674,8 @@ function viewReport() {
 
 /* ---------- หน้า 4: งบ ---------- */
 function budgetIncome(y, m) {
-  // รายรับของเดือนที่ดู ถ้ายังไม่มี ใช้รายรับของเดือนล่าสุดก่อนหน้าที่มีรายรับ (ระบุให้ผู้ใช้เห็น)
+  // รายรับที่ผู้ใช้กำหนด > รายรับของเดือนที่ดู > รายรับของเดือนล่าสุดก่อนหน้าที่มีรายรับ (ระบุให้ผู้ใช้เห็น)
+  if (S.planInc > 0) return { v: S.planInc, note: 'รายรับที่กำหนด' };
   const cur = summarize(monthTx(y, m)).inc;
   if (cur > 0) return { v: cur, note: 'รายรับเดือนนี้' };
   for (let i = 1; i <= 12; i++) {
@@ -698,12 +715,14 @@ function viewBudget() {
   }).join('');
   return `
   <div class="mnav"><button data-act="budprev" aria-label="เดือนก่อน">‹</button><b>${TH_M[m]} ${y + 543}</b><button data-act="budnext" aria-label="เดือนถัดไป">›</button></div>
+  <div class="planrow"><label for="plan-inc">รายรับต่อเดือนที่คาดว่าจะได้</label>
+    <span class="binp"><input id="plan-inc" inputmode="numeric" data-chg="planinc" value="${S.planInc > 0 ? S.planInc : ''}" placeholder="${base.v > 0 ? Math.round(base.v) : '0'}" aria-label="รายรับต่อเดือนที่คาดว่าจะได้"> บาท</span></div>
   <div class="sum3">
     <div><small>งบรวม</small><b>${money(totB)}</b></div>
     <div><small>ใช้ไป</small><b class="exp">${money(totU)}</b></div>
     <div><small>เหลือ</small><b class="${totB - totU < 0 ? 'neg' : 'pos'}">${money(totB - totU)}</b></div>
   </div>
-  <p class="note" style="margin:-4px 0 10px">${base.v > 0 ? `% จาก${base.note} ${money(base.v)} เส้นทองคือเป้า` : 'ใส่รายรับก่อน จะเห็น % เทียบเป้า'}</p>
+  <p class="note" style="margin:-4px 0 10px">${base.v > 0 ? `% จาก${base.note} ${money(base.v)} เส้นทองคือเป้า` : 'ใส่รายรับที่คาดว่าจะได้ จะเห็น % เทียบเป้า'}</p>
   ${groups}`;
 }
 const EMOJIS = ['🍚', '🍜', '🍕', '🍔', '🍰', '☕', '🍺', '🛒', '🧴', '👕', '👟', '👜', '🚌', '🚗', '⛽', '🏠', '💡', '📱', '💻', '🎮', '📚', '🎓', '🎬', '🎵', '⚽', '🏋️', '🧘', '💊', '🏥', '🐶', '🐱', '👶', '🎁', '💍', '✈️', '🏖️', '🛠️', '💼', '💰', '📈', '🏦', '🛡️', '🧾', '❤️', '🌿', '⭐', '🎨', '🙂'];
@@ -748,7 +767,7 @@ function sheetSettings() {
     return head('ตั้งค่า') + `<div class="list">
       <button class="mi" data-act="spage" data-v="exp"><span>หมวดรายจ่าย</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="inc"><span>หมวดรายรับ</span><span>›</span></button>
-      <button class="mi" data-act="spage" data-v="cash"><span>เงินสด/เงินฝากของฉัน</span><span>›</span></button>
+      <button class="mi" data-act="spage" data-v="cash"><span>เงินสำรองฉุกเฉิน</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="rec"><span>รายการประจำ</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="backup"><span>สำรองและกู้คืนข้อมูล</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="me"><span>ข้อมูลของฉัน</span><span>›</span></button>
@@ -793,14 +812,18 @@ function sheetSettings() {
     <p class="note">การกู้คืนจะแทนที่ข้อมูลปัจจุบันทั้งหมด</p>`;
   }
   if (p === 'cash') {
-    const e = emergencyInfo();
-    return head('เงินสด/เงินฝากของฉัน', true) + `
+    const e = emergencyInfo(), au = autoAvgInfo();
+    return head('เงินสำรองฉุกเฉิน', true) + `
     <p class="mute one">เงินสดและเงินฝากรวม (ไม่รวมลงทุน)</p>
-    ${e ? `<div class="card"><small>ยอดปัจจุบันที่แอปคำนวณ</small><br><b style="font-size:22px">${money(e.cash)}</b></div>` : ''}
+    ${e ? `<div class="card"><small>ยอดปัจจุบันที่แอปคำนวณ</small><br><b style="font-size:20px">${money(e.cash)}</b></div>` : ''}
     <label class="f" for="cash-amt">${e ? 'ยอดจริงตอนนี้ (บาท)' : 'ยอดตอนนี้ (บาท)'}</label>
     <input id="cash-amt" class="in" data-bind="cashf.amt" data-num="1" inputmode="decimal" placeholder="0" value="${esc(cashf.amt)}">
-    <p class="note two">แอปบวกลบตามรายการที่บันทึก (ออมนับ ลงทุนไม่นับ)<br>แก้ยอดได้ทุกเมื่อ เก็บในเครื่องเท่านั้น ไม่ส่งให้ WDC</p>
-    <button class="btn" data-act="cashsave">บันทึกยอด</button>`;
+    <label class="f" for="cash-avg">รายจ่ายเฉลี่ยต่อเดือน กำหนดเอง (บาท)</label>
+    <input id="cash-avg" class="in" data-bind="cashf.avg" data-num="1" inputmode="decimal" placeholder="0" value="${esc(cashf.avg)}">
+    ${au ? `<label class="f">ใช้ค่าไหนคำนวณ</label>
+    <div class="seg"><button class="${S.avgMode !== 'manual' || !(S.avgExp > 0) ? 'on' : ''}" data-act="avgmode" data-v="auto">จากที่บันทึก ${money(au.avg)}</button><button class="${S.avgMode === 'manual' && S.avgExp > 0 ? 'on' : ''}" data-act="avgmode" data-v="manual">กำหนดเอง</button></div>` : ''}
+    <p class="note two">${au ? 'มีข้อมูลที่บันทึกแล้ว เลือกใช้ค่าเฉลี่ยหรือค่าที่กำหนดเองได้' : 'ยังไม่มีข้อมูล แอปใช้ค่าที่กำหนดเองไปก่อน'}<br>แก้ได้ทุกเมื่อ เก็บในเครื่องเท่านั้น ไม่ส่งให้ WDC</p>
+    <button class="btn" data-act="cashsave">บันทึก</button>`;
   }
   if (p === 'me') {
     const pr = S.profile;
@@ -869,6 +892,10 @@ function onBind(el) {
 
 function onChg(el) {
   const k = el.dataset.chg, id = el.dataset.id;
+  if (k === 'planinc') {
+    const v = parseFloat(String(el.value).replace(/[^0-9.]/g, ''));
+    S.planInc = v > 0 ? r2(v) : null; save(); render(); return;
+  }
   if (k === 'budget') {
     const v = parseFloat(String(el.value).replace(/[^0-9.]/g, ''));
     if (v > 0) S.budgets[id] = r2(v); else delete S.budgets[id];
@@ -923,24 +950,20 @@ function act(a, t) {
     case 'tab': ui.tab = t.dataset.v; render(); window.scrollTo(0, 0); break;
     case 'close': closeSheet(); break;
     case 'settings': openSheet({ kind: 'settings', page: 'home' }); break;
-    case 'spage': sheet.page = t.dataset.v; sheet.confirm = false; renderSheet(); break;
+    case 'spage': if (t.dataset.v === 'cash') cashf = { amt: '', avg: S.avgExp > 0 ? String(S.avgExp) : '' }; sheet.page = t.dataset.v; sheet.confirm = false; renderSheet(); break;
 
     /* บันทึก */
     case 'ftype': form.type = t.dataset.v; form.cat = ''; render(); break;
-    case 'cashset': cashf = { amt: '' }; openSheet({ kind: 'settings', page: 'cash' }); break;
+    case 'cashset': cashf = { amt: '', avg: S.avgExp > 0 ? String(S.avgExp) : '' }; openSheet({ kind: 'settings', page: 'cash' }); break;
     case 'cashsave': {
-      const v = parseFloat(cashf.amt);
-      if (cashf.amt === '' || !(v >= 0)) { toast('ใส่ยอดเงินก่อน'); return; }
-      S.cash = { amt: r2(v), ts: Date.now(), date: today() };
-      save(); cashf = { amt: '' }; closeSheet(); render(); toast('บันทึกยอดแล้ว'); break;
+      const v = parseFloat(cashf.amt), av = parseFloat(cashf.avg);
+      const hasAmt = cashf.amt !== '' && v >= 0, hasAvg = cashf.avg !== '' && av > 0;
+      if (!hasAmt && !hasAvg) { toast('ใส่ยอดเงินหรือรายจ่ายเฉลี่ยก่อน'); return; }
+      if (hasAmt) S.cash = { amt: r2(v), ts: Date.now(), date: today() };
+      if (hasAvg) S.avgExp = r2(av);
+      save(); closeSheet(); render(); toast('บันทึกแล้ว'); break;
     }
-    case 'kp': kpPress(t.dataset.k); break;
-    case 'kpclose': hideKp(); break;
-    case 'kpnative': {
-      ui.native = true; hideKp();
-      const f = $('#f-amt'); if (f) { f.setAttribute('inputmode', 'decimal'); f.blur(); f.focus(); }
-      break;
-    }
+    case 'avgmode': S.avgMode = t.dataset.v; save(); render(); renderSheet(); break;
     case 'tip': tipIdx = nextTip(tipIdx); render(); break;
     case 'dprev': form.date = addDays(form.date || today(), -1); render(); break;
     case 'dnext': form.date = addDays(form.date || today(), 1); render(); break;

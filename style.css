@@ -289,3 +289,27 @@ body.kpopen #toast{bottom:340px}
 .calfix .sum3 small,.calfix .sum2 small{display:inline;font-size:11.5px}
 .calfix .sum3 b,.calfix .sum2 b{font-size:13.5px}
 .calfix .sum3{margin-top:4px!important;margin-bottom:4px}
+
+.planrow{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 10px}
+.planrow label{font-size:15px;color:var(--ink)}
+.planrow .binp input{width:112px;min-height:38px;padding:4px 10px}
+/* ลดขนาดให้เห็นรายการมากขึ้น */
+.tiles{gap:6px}
+.tile{min-height:54px!important;font-size:13px!important;padding:5px 4px;gap:0!important}
+.tile .ti{font-size:20px!important}
+.row{padding:6px 10px!important;min-height:38px!important}
+.row .ico{font-size:17px!important;width:24px!important}
+.row .r-main b{font-size:15px!important}
+.row .amt{font-size:15px!important}
+.brow{padding:8px 0}
+.brow .bar{margin:5px 0 3px;height:8px}
+.binp input{min-height:36px;padding:4px 10px;font-size:15.5px}
+.empty{padding:12px 14px}
+.hero{padding:10px 16px;margin-bottom:8px;border-radius:14px}
+.hero small{font-size:13px}
+.hero>b{font-size:26px;margin:0 0 4px}
+.hero-r{font-size:13px}
+.banner{padding:7px 12px;margin-bottom:8px;font-size:14.5px;line-height:1.35}
+.banner .b2{margin-top:2px;font-size:13.5px}
+.seg{margin-bottom:8px}.seg button{min-height:38px;padding:6px}
+label.f{margin-top:8px}
