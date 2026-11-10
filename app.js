@@ -79,12 +79,14 @@ function exStatus(p) {
   return ['bad', 'เกินรายได้'];
 }
 function ratioCard(r) {
-  const row = (label, sub, val, st, crit) => `<div class="rt"><div class="rt-l"><b>${label}</b><small>${sub}</small></div><div class="rt-r"><span class="rt-v st-${st[0]}">${val}</span><span class="rt-s st-${st[0]}">${st[1]}</span></div><div class="rt-c">${crit}</div></div>`;
+  const row = (label, sub, val, st, crit) => `<div class="rt"><div class="rt-l"><b>${label}</b><small>${sub}</small></div><div class="rt-r"><span class="rt-v st-${st[0]}">${val}</span>${st[1] ? `<span class="rt-s st-${st[0]}">${st[1]}</span>` : ''}</div>${crit ? `<div class="rt-c">${crit}</div>` : ''}</div>`;
   let html = '';
   if (r.inc > 0) {
+    const sv = Math.round(r.grp.save / r.inc * 100);
+    html += row('อัตราออม', 'เงินออม + ลงทุน ÷ รายรับ', sv + '%', ['none', ''], '(เป้า 20% ตามกรอบ 50/30/20)');
     const p = Math.round((r.grp.need + r.grp.want) / r.inc * 100);
     html += row('รายจ่ายต่อรายรับ', 'ไม่รวมออมและลงทุน', p + '%', exStatus(p), '(ดี ไม่เกิน 80% ระวัง 80 ถึง 100%)');
-  } else html += '<div class="empty">ใส่รายรับก่อน ถึงจะคำนวณรายจ่ายต่อรายรับได้</div>';
+  } else html += '<div class="empty">ใส่รายรับก่อน ถึงจะคำนวณอัตราออมและรายจ่ายต่อรายรับได้</div>';
   const e = emergencyInfo();
   if (!e) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>ใส่เงินสด/เงินฝากของคุณ เพื่อดูว่าเพียงพอกี่เดือน</small></div><button class="btn ghost sm" data-act="cashset">ใส่ยอดเงิน</button></div>`;
   else if (!e.avg) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>มีเงิน ${money(e.cash)} ใส่รายจ่ายเฉลี่ยต่อเดือนเอง ไปก่อนได้</small></div><button class="btn ghost sm" data-act="cashset">ใส่ยอด</button></div>`;
@@ -159,7 +161,7 @@ function toast(msg) {
 /* ================= ข้อมูล ================= */
 let mem = null;
 const fresh = () => ({
-  v: 1, mig: 5, profile: null, cash: null, planInc: null, avgExp: null, avgMode: 'auto',
+  v: 1, mig: 6, profile: null, cash: null, planInc: null, avgExp: null, avgMode: 'auto', budOn: {},
   expCats: DEFAULT_EXP.map(([id, name, group, icon]) => ({ id, name, group, icon, hidden: false })),
   incCats: [], tx: [], budgets: {}, recurring: [], logDays: [], skipKeys: []
 });
@@ -171,7 +173,13 @@ function load() {
   return mem || fresh();
 }
 function migrate(o) {
-  if (o.mig >= 5) return o;
+  if (o.mig >= 6) return o;
+  if (!(o.mig >= 5)) migrate5(o);
+  if (!o.budOn) o.budOn = {};
+  o.mig = 6;
+  return o;
+}
+function migrate5(o) {
   if (!(o.mig >= 4)) migrate4(o);
   if (o.planInc === undefined) o.planInc = null;
   if (o.avgExp === undefined) o.avgExp = null;
@@ -391,12 +399,13 @@ function showKp() {
   r.innerHTML = `<div class="kp" role="group" aria-label="แป้นตัวเลข"><div class="kp-in"><div class="kp-g">${KP_KEYS.map(k => `<button class="kpk" data-act="kp" data-k="${k}" aria-label="${k === '⌫' ? 'ลบ' : k === '.' ? 'จุดทศนิยม' : k}">${k}</button>`).join('')}</div>
     <div class="kp-b"><button class="kpb" data-act="kpnative">พิมพ์เอง</button><button class="kpb" data-act="kpclose">เสร็จ</button><button class="kpb pri" data-act="submit">บันทึก</button></div></div></div>`;
   document.body.classList.add('kpopen');
-  const f = $('#f-amt'); if (f) f.scrollIntoView({ block: 'center' });
+  const f = $('#f-amt-d'); if (f) { f.classList.add('act'); f.scrollIntoView({ block: 'center' }); }
 }
 function hideKp() {
   ui.kp = false;
   const r = $('#kp-root'); if (r) r.innerHTML = '';
   document.body.classList.remove('kpopen');
+  const f = $('#f-amt-d'); if (f) f.classList.remove('act');
 }
 function kpPress(k) {
   let v = String(form.amount || '');
@@ -407,18 +416,12 @@ function kpPress(k) {
     v = v === '0' ? k : v + k;
   }
   form.amount = v;
-  const f = $('#f-amt'); if (f) f.value = v;
+  const f = $('#f-amt-d'); if (f) f.innerHTML = v ? esc(v) : '<span class="ph">0</span>';
 }
-document.addEventListener('focusin', e => {
-  if (e.target.id === 'f-amt' && !ui.native && !ui.kp) { e.target.blur(); showKp(); }
-});
-document.addEventListener('focusout', e => {
-  if (e.target.id === 'f-amt' && ui.native) setTimeout(() => { if (!document.activeElement || document.activeElement.id !== 'f-amt') ui.native = false; }, 80);
-});
 document.addEventListener('click', e => {
   // แตะนอกช่องจำนวนเงินและแป้น: ปิดแป้น
   if (!ui.kp) return;
-  if (e.target.closest('.kp') || e.target.closest('#f-amt') || e.target.closest('.tile') || e.target.closest('[data-act]')) return;
+  if (e.target.closest('.kp') || e.target.closest('#f-amt-d') || e.target.closest('.tile') || e.target.closest('[data-act]')) return;
   hideKp();
 });
 
@@ -493,7 +496,9 @@ function viewEntry() {
   <label class="f" for="f-note">โน้ต (ไม่บังคับ)</label>
   <input id="f-note" class="in" data-bind="form.note" placeholder="เช่น ข้าวมันไก่" value="${esc(form.note)}" maxlength="80">
   <label class="f" for="f-amt">จำนวนเงิน (บาท)</label>
-  <input id="f-amt" class="in" data-bind="form.amount" data-num="1" inputmode="none" autocomplete="off" placeholder="0" value="${esc(form.amount)}">
+  ${ui.native
+    ? `<input id="f-amt" class="in" data-bind="form.amount" data-num="1" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(form.amount)}"><button class="chip" data-act="kpapp" style="margin-top:6px">ใช้แป้นตัวเลขของแอป</button>`
+    : `<div id="f-amt-d" class="in amtd ${ui.kp ? 'act' : ''}" data-act="kpopen" role="button" tabindex="0" aria-label="จำนวนเงิน แตะเพื่อกรอก">${form.amount ? esc(form.amount) : '<span class="ph">0</span>'}</div>`}
   <label class="f">หมวด</label>
   <div class="tiles">${cats.map(c => `<button class="tile ${form.cat === c.id ? 'sel' : ''} ${form.type}" data-act="pickcat" data-id="${c.id}"><span class="ti">${c.icon || '🏷️'}</span><span>${esc(c.name)}</span></button>`).join('')}<button class="tile add" data-act="newcat"><span class="ti">➕</span><span>เพิ่มหมวดเอง</span></button></div>
   <div class="stickysave"><button class="btn" data-act="submit">บันทึก</button></div>
@@ -632,7 +637,6 @@ function viewReport() {
   const txs = S.tx.filter(t => t.date.startsWith(pre));
   const r = summarize(txs);
   const title = mode === 'month' ? `${TH_M[m]} ${y + 543}` : `ปี ${y + 543}`;
-  const rate = r.inc > 0 ? Math.round(r.grp.save / r.inc * 100) + '%' : '-';
 
   // สัดส่วนตามหมวด เรียงตามกลุ่ม แล้วตามยอดมาก→น้อย
   const slices = [];
@@ -663,8 +667,7 @@ function viewReport() {
     <div><small>รายจ่ายรวม</small><b class="exp">${money(r.exp)}</b></div>
     <div><small>คงเหลือ</small><b class="${r.inc - r.exp < 0 ? 'neg' : 'pos'}">${money(r.inc - r.exp)}</b></div>
   </div>
-  <div class="card kpicard"><div class="kpi"><span>💰 อัตราออม <small>(เงินออม + ลงทุน ÷ รายรับ)</small></span><b>${rate}</b></div></div>
-  <h2 class="sec">อัตราส่วนการเงิน</h2><div class="card">${ratioCard(r)}</div>
+  <h2 class="sec">อัตราส่วนการเงิน</h2><div class="card ratiocard">${ratioCard(r)}</div>
   <h2 class="sec">รายจ่ายตามหมวด</h2><div class="card">${donutBlock}</div>
   <h2 class="sec">เทียบกับ 50/30/20</h2><div class="card">${g532}</div>
   ${mode === 'month'
@@ -673,6 +676,8 @@ function viewReport() {
 }
 
 /* ---------- หน้า 4: งบ ---------- */
+// หมวดที่ผู้ใช้ติ๊กว่าจะตั้งงบ (ถ้ายังไม่เคยติ๊ก ใช้ว่ามีงบอยู่แล้วหรือไม่)
+const budOn = id => (S.budOn && id in S.budOn) ? !!S.budOn[id] : (S.budgets[id] > 0);
 function budgetIncome(y, m) {
   // รายรับที่ผู้ใช้กำหนด > รายรับของเดือนที่ดู > รายรับของเดือนล่าสุดก่อนหน้าที่มีรายรับ (ระบุให้ผู้ใช้เห็น)
   if (S.planInc > 0) return { v: S.planInc, note: 'รายรับที่กำหนด' };
@@ -690,6 +695,7 @@ function viewBudget() {
   const base = budgetIncome(y, m);
   let totB = 0, totU = 0;
   const catRow = c => {
+    if (!budOn(c.id)) return `<div class="brow off"><label class="bchk"><input type="checkbox" data-chg="budtick" data-id="${c.id}" aria-label="ตั้งงบ ${esc(c.name)}"> ${c.icon || '🏷️'} <b>${esc(c.name)}</b></label></div>`;
     const b = S.budgets[c.id] || 0, used = r.byCat[c.id] || 0;
     if (b > 0) { totB += b; totU += used; }
     const pct = b > 0 ? used / b * 100 : 0;
@@ -698,14 +704,14 @@ function viewBudget() {
     const meta = b > 0
       ? `${isSave ? 'ออมแล้ว' : 'ใช้'} ${money(used)} จาก ${money(b)} (${Math.round(pct)}%)${pct > 100 && !isSave ? ` เกิน ${money(used - b)}` : ''}`
       : `ยังไม่ได้ตั้งงบ${used > 0 ? ` (ใช้ไป ${money(used)})` : ''}`;
-    return `<div class="brow"><div class="brow-top"><div>${c.icon || '🏷️'} <b>${esc(c.name)}</b></div>
-      <label class="binp"><input inputmode="numeric" data-chg="budget" data-id="${c.id}" value="${b ? b : ''}" placeholder="0" aria-label="งบต่อเดือน ${esc(c.name)}"> บาท</label></div>
+    return `<div class="brow"><div class="brow-top"><label class="bchk"><input type="checkbox" data-chg="budtick" data-id="${c.id}" checked aria-label="ตั้งงบ ${esc(c.name)}"> ${c.icon || '🏷️'} <b>${esc(c.name)}</b></label>
+      <label class="binp"><input inputmode="numeric" data-chg="budget" data-id="${c.id}" value="${b ? b : ''}" placeholder="ตั้งงบ" aria-label="งบต่อเดือน ${esc(c.name)}"> บาท</label></div>
       <div class="bar"><i class="${cls}" style="width:${Math.min(pct, 100).toFixed(1)}%"></i></div><div class="bmeta">${meta}</div></div>`;
   };
   const groups = ['need', 'want', 'save'].map(g => {
     const cs = S.expCats.filter(c => !c.hidden && c.group === g);
     if (!cs.length) return '';
-    const gb = cs.reduce((x, c) => x + (S.budgets[c.id] || 0), 0);
+    const gb = cs.reduce((x, c) => x + (budOn(c.id) ? (S.budgets[c.id] || 0) : 0), 0);
     const pct = base.v > 0 ? gb / base.v * 100 : 0;
     const over = g !== 'save' && pct > TARGET[g];
     const head = `<div class="bg-h"><b>${GRP[g]}</b><span>งบ ${money(gb)}</span></div>
@@ -716,7 +722,7 @@ function viewBudget() {
   return `
   <div class="mnav"><button data-act="budprev" aria-label="เดือนก่อน">‹</button><b>${TH_M[m]} ${y + 543}</b><button data-act="budnext" aria-label="เดือนถัดไป">›</button></div>
   <div class="planrow"><label for="plan-inc">รายรับต่อเดือนที่คาดว่าจะได้</label>
-    <span class="binp"><input id="plan-inc" inputmode="numeric" data-chg="planinc" value="${S.planInc > 0 ? S.planInc : ''}" placeholder="${base.v > 0 ? Math.round(base.v) : '0'}" aria-label="รายรับต่อเดือนที่คาดว่าจะได้"> บาท</span></div>
+    <span class="binp"><input id="plan-inc" inputmode="numeric" data-chg="planinc" value="${S.planInc > 0 ? S.planInc : ''}" placeholder="ตั้งรายรับ" aria-label="รายรับต่อเดือนที่คาดว่าจะได้"> บาท</span></div>
   <div class="sum3">
     <div><small>งบรวม</small><b>${money(totB)}</b></div>
     <div><small>ใช้ไป</small><b class="exp">${money(totU)}</b></div>
@@ -896,6 +902,7 @@ function onChg(el) {
     const v = parseFloat(String(el.value).replace(/[^0-9.]/g, ''));
     S.planInc = v > 0 ? r2(v) : null; save(); render(); return;
   }
+  if (k === 'budtick') { if (!S.budOn) S.budOn = {}; S.budOn[id] = el.checked; save(); render(); return; }
   if (k === 'budget') {
     const v = parseFloat(String(el.value).replace(/[^0-9.]/g, ''));
     if (v > 0) S.budgets[id] = r2(v); else delete S.budgets[id];
@@ -964,6 +971,15 @@ function act(a, t) {
       save(); closeSheet(); render(); toast('บันทึกแล้ว'); break;
     }
     case 'avgmode': S.avgMode = t.dataset.v; save(); render(); renderSheet(); break;
+    case 'kp': kpPress(t.dataset.k); break;
+    case 'kpclose': hideKp(); break;
+    case 'kpopen': if (!ui.kp) showKp(); break;
+    case 'kpnative': {
+      ui.native = true; hideKp(); render();
+      const f = $('#f-amt'); if (f) f.focus();
+      break;
+    }
+    case 'kpapp': ui.native = false; render(); showKp(); break;
     case 'tip': tipIdx = nextTip(tipIdx); render(); break;
     case 'dprev': form.date = addDays(form.date || today(), -1); render(); break;
     case 'dnext': form.date = addDays(form.date || today(), 1); render(); break;

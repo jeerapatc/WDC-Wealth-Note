@@ -313,3 +313,20 @@ body.kpopen #toast{bottom:340px}
 .banner .b2{margin-top:2px;font-size:13.5px}
 .seg{margin-bottom:8px}.seg button{min-height:38px;padding:6px}
 label.f{margin-top:8px}
+
+.amtd{display:flex;align-items:center;min-height:46px;font-size:18px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.amtd .ph{color:#A9A79F}
+.amtd.act{border-color:var(--teal);box-shadow:0 0 0 2px rgba(51,102,103,.28)}
+.ratiocard{background:linear-gradient(135deg,#D9ECE2 0%,#ECF5F0 50%,#FBFDFC 100%);border:1px solid #C9E0D3}
+.ratiocard .rt{border-bottom:1px solid rgba(51,102,103,.14);padding:9px 0}
+.ratiocard .rt:last-child{border-bottom:0}
+.ratiocard .rt-l b{font-size:15px;color:var(--teal)}
+.ratiocard .rt-l small{font-size:11.5px}
+.ratiocard .rt-c{font-size:11px}
+.ratiocard .rt-v{font-size:22px;font-weight:700}
+.st-none{color:var(--teal)}
+.bchk{display:flex;align-items:center;gap:8px;min-width:0}
+.bchk input{width:20px;height:20px;flex:none;accent-color:var(--teal)}
+.bchk b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow.off{padding:7px 0}
+.brow.off .bchk{color:var(--mute)}.brow.off .bchk b{font-weight:500}
