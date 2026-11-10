@@ -1,5 +1,5 @@
 // Service worker: เปิดแอปได้แม้ไม่มีเน็ต (ลองโหลดใหม่ก่อน ถ้าไม่ได้ใช้ของที่เก็บไว้)
-const CACHE = 'wealth-note-v3';
+const CACHE = 'wealth-note-v4';
 const ASSETS = [
   './', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
   'assets/logo_teal.png', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png',
