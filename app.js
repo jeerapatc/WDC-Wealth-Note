@@ -218,8 +218,7 @@ let sheet = null;
 let edit = null;
 let rec = { type: 'expense', cat: '', amount: '', day: '1', note: '' };
 let nc = { name: '', group: 'want', icon: '' };
-let auto = { income: '', pct: { need: '50', want: '30', save: '20' }, off: {}, w: {} };
-const B = { reg: () => reg, form: () => form, edit: () => edit, rec: () => rec, nc: () => nc, auto: () => auto, cashf: () => cashf };
+const B = { reg: () => reg, form: () => form, edit: () => edit, rec: () => rec, nc: () => nc, cashf: () => cashf };
 
 /* ================= คำนวณ ================= */
 const catList = type => (type === 'income' ? S.incCats : S.expCats);
@@ -427,6 +426,7 @@ function render() {
   </header>
   ${body}
   <nav class="nav"><div class="nav-in">${TABS.map(([k, n]) => `<button class="${ui.tab === k ? 'on' : ''}" data-act="tab" data-v="${k}">${svg(k)}<span>${n}</span></button>`).join('')}</div></nav>`;
+  const th = $('.top'); if (th) document.documentElement.style.setProperty('--topH', th.offsetHeight + 'px');
 }
 
 /* ---------- หน้า 1: บันทึก ---------- */
@@ -526,18 +526,25 @@ function viewCal() {
   });
   const bal = inc - exp;
   const sel = ui.calSel;
-  const [sy, sm2, sd] = sel.split('-').map(Number);
-  const dayList = S.tx.filter(t => t.date === sel).slice().reverse();
-  const dsum = summarize(dayList);
-  const dnet = dsum.inc - dsum.exp;
   const isCur = y === new Date().getFullYear() && m === new Date().getMonth();
+  // รายการ: วันที่เลือกก่อน (แม้ไม่มีรายการ) แล้วตามด้วยวันก่อนหน้าในเดือนเดียวกันที่มีรายการ เรียงใหม่→เก่า
+  const dayKeys = [sel];
+  Object.keys(map).filter(k => k.startsWith(mp) && k < sel).sort().reverse().forEach(k => dayKeys.push(k));
+  const sections = dayKeys.map(key => {
+    const [sy, sm2, sd] = key.split('-').map(Number);
+    const list = S.tx.filter(t => t.date === key).slice().reverse();
+    const ds = summarize(list), net = ds.inc - ds.exp;
+    return `<div class="dayhead calday ${key === sel ? 'cur' : ''}"><span><b>${sd} ${TH_MS[sm2 - 1]} ${sy + 543}</b> <small>(${TH_DAYF[new Date(sy, sm2 - 1, sd).getDay()]})</small></span>
+      <span class="dh-r"><b class="${net < 0 ? 'neg' : net > 0 ? 'pos' : ''}">${net ? (net > 0 ? '+' : '') + money(net) : ''}</b>${key === sel ? '<button class="chip" data-act="addday">+ เพิ่ม</button>' : ''}</span></div>
+      <div class="list">${list.length ? list.map(txRow).join('') : '<div class="empty">ยังไม่มีรายการในวันนี้</div>'}</div>`;
+  }).join('');
   return `
+  <div class="calfix">
   <div class="mnav"><button data-act="calprev" aria-label="เดือนก่อน">‹</button>
-    <div class="mtitle"><b>${TH_M[m]} ${y + 543}</b><small>(1 - ${n} ${TH_MS[m]})</small></div>
+    <div class="mtitle"><b>${TH_M[m]} ${y + 543}</b><small>(1 - ${n} ${TH_MS[m]})${isCur ? '' : ' <button class="chip" data-act="caltoday">ไปเดือนนี้</button>'}</small></div>
     <button data-act="calnext" aria-label="เดือนถัดไป">›</button></div>
-  ${isCur ? '' : '<div style="text-align:center;margin:-4px 0 8px"><button class="chip" data-act="caltoday">ไปเดือนนี้</button></div>'}
   <div class="cal">${head}${cells}</div>
-  <div class="sum3" style="margin-top:12px">
+  <div class="sum3" style="margin-top:8px">
     <div><small>รายรับ</small><b class="inc">${money(inc)}</b></div>
     <div><small>รายจ่าย</small><b class="exp">${money(exp)}</b></div>
     <div><small>รวม</small><b class="${bal < 0 ? 'neg' : 'pos'}">${bal > 0 ? '+' : ''}${money(bal)}</b></div>
@@ -546,10 +553,8 @@ function viewCal() {
     <div><small>ยอดยกมา</small><b class="${prev < 0 ? 'neg' : ''}">${money(prev)}</b></div>
     <div><small>คงเหลือสะสม</small><b class="${prev + bal < 0 ? 'neg' : 'pos'}">${money(prev + bal)}</b></div>
   </div>
-  <div class="dayhead calday"><span><b>${sd} ${TH_MS[sm2 - 1]} ${sy + 543}</b> <small>(${TH_DAYF[new Date(sy, sm2 - 1, sd).getDay()]})</small></span>
-    <b class="${dnet < 0 ? 'neg' : dnet > 0 ? 'pos' : ''}">${dnet ? (dnet > 0 ? '+' : '') + money(dnet) : ''}</b></div>
-  <div class="list">${dayList.length ? dayList.map(txRow).join('') : '<div class="empty">ยังไม่มีรายการในวันนี้</div>'}</div>
-  <button class="btn ghost" data-act="addday">เพิ่มรายการวันที่นี้</button>`;
+  </div>
+  ${sections}`;
 }
 
 /* ---------- หน้า 3: รายงาน ---------- */
@@ -652,12 +657,22 @@ function viewReport() {
 }
 
 /* ---------- หน้า 4: งบ ---------- */
+function budgetIncome(y, m) {
+  // รายรับของเดือนที่ดู ถ้ายังไม่มี ใช้รายรับของเดือนล่าสุดก่อนหน้าที่มีรายรับ (ระบุให้ผู้ใช้เห็น)
+  const cur = summarize(monthTx(y, m)).inc;
+  if (cur > 0) return { v: cur, note: 'รายรับเดือนนี้' };
+  for (let i = 1; i <= 12; i++) {
+    const d = new Date(y, m - i, 1), v = summarize(monthTx(d.getFullYear(), d.getMonth())).inc;
+    if (v > 0) return { v, note: 'รายรับ' + TH_MS[d.getMonth()] };
+  }
+  return { v: 0, note: '' };
+}
 function viewBudget() {
   const y = ui.budY, m = ui.budM;
   const r = summarize(monthTx(y, m));
-  const cats = S.expCats.filter(c => !c.hidden);
+  const base = budgetIncome(y, m);
   let totB = 0, totU = 0;
-  const rows = cats.map(c => {
+  const catRow = c => {
     const b = S.budgets[c.id] || 0, used = r.byCat[c.id] || 0;
     if (b > 0) { totB += b; totU += used; }
     const pct = b > 0 ? used / b * 100 : 0;
@@ -666,9 +681,20 @@ function viewBudget() {
     const meta = b > 0
       ? `${isSave ? 'ออมแล้ว' : 'ใช้'} ${money(used)} จาก ${money(b)} (${Math.round(pct)}%)${pct > 100 && !isSave ? ` เกิน ${money(used - b)}` : ''}`
       : `ยังไม่ได้ตั้งงบ${used > 0 ? ` (ใช้ไป ${money(used)})` : ''}`;
-    return `<div class="brow"><div class="brow-top"><div>${c.icon || '🏷️'} <b>${esc(c.name)}</b> <small>${GRP[c.group]}</small></div>
+    return `<div class="brow"><div class="brow-top"><div>${c.icon || '🏷️'} <b>${esc(c.name)}</b></div>
       <label class="binp"><input inputmode="numeric" data-chg="budget" data-id="${c.id}" value="${b ? b : ''}" placeholder="0" aria-label="งบต่อเดือน ${esc(c.name)}"> บาท</label></div>
       <div class="bar"><i class="${cls}" style="width:${Math.min(pct, 100).toFixed(1)}%"></i></div><div class="bmeta">${meta}</div></div>`;
+  };
+  const groups = ['need', 'want', 'save'].map(g => {
+    const cs = S.expCats.filter(c => !c.hidden && c.group === g);
+    if (!cs.length) return '';
+    const gb = cs.reduce((x, c) => x + (S.budgets[c.id] || 0), 0);
+    const pct = base.v > 0 ? gb / base.v * 100 : 0;
+    const over = g !== 'save' && pct > TARGET[g];
+    const head = `<div class="bg-h"><b>${GRP[g]}</b><span>งบ ${money(gb)}</span></div>
+      ${base.v > 0 ? `<div class="bg-p"><span class="${over ? 'neg' : ''}"><b>${Math.round(pct)}%</b> ของรายรับ</span><small>เป้า ${TARGET[g]}%</small></div>
+      <div class="gbar"><i style="width:${Math.min(pct, 100).toFixed(1)}%"></i><u style="left:calc(${TARGET[g]}% - 1px)"></u></div>` : ''}`;
+    return `<div class="bgrp">${head}<div class="card" style="padding-top:2px;padding-bottom:2px;margin-top:8px">${cs.map(catRow).join('')}</div></div>`;
   }).join('');
   return `
   <div class="mnav"><button data-act="budprev" aria-label="เดือนก่อน">‹</button><b>${TH_M[m]} ${y + 543}</b><button data-act="budnext" aria-label="เดือนถัดไป">›</button></div>
@@ -677,51 +703,9 @@ function viewBudget() {
     <div><small>ใช้ไป</small><b class="exp">${money(totU)}</b></div>
     <div><small>เหลือ</small><b class="${totB - totU < 0 ? 'neg' : 'pos'}">${money(totB - totU)}</b></div>
   </div>
-  <p class="note" style="margin:-4px 0 10px">"ใช้ไป" นับเฉพาะหมวดที่ตั้งงบ งบใช้เท่ากันทุกเดือน แถบเป็นสีทองเมื่อใช้ถึง 80% และสีแดงเมื่อเกิน 100% (หมวดออมไม่เปลี่ยนสี)</p>
-  <button class="btn ghost" style="margin:0 0 12px" data-act="autobud">เติมงบอัตโนมัติ 50/30/20</button>
-  <div class="card" style="padding-top:2px;padding-bottom:2px">${rows}</div>`;
+  <p class="note" style="margin:-4px 0 10px">${base.v > 0 ? `% จาก${base.note} ${money(base.v)} เส้นทองคือเป้า` : 'ใส่รายรับก่อน จะเห็น % เทียบเป้า'}</p>
+  ${groups}`;
 }
-function autoPlan() {
-  const inc = parseFloat(auto.income) || 0;
-  const pct = { need: parseFloat(auto.pct.need) || 0, want: parseFloat(auto.pct.want) || 0, save: parseFloat(auto.pct.save) || 0 };
-  const total = pct.need + pct.want + pct.save;
-  const nb = {}, groups = {};
-  ['need', 'want', 'save'].forEach(g => {
-    const cs = S.expCats.filter(c => !c.hidden && c.group === g && !auto.off[c.id]);
-    const ws = cs.map(c => { const w = parseFloat(auto.w[c.id]); return w > 0 ? w : 1; });
-    const sw = ws.reduce((x, v) => x + v, 0);
-    const gb = inc * pct[g] / 100;
-    groups[g] = { cs, ws, sw, gb };
-    cs.forEach((c, i) => { const v = Math.round(gb * ws[i] / sw / 10) * 10; if (v > 0) nb[c.id] = v; });
-  });
-  return { inc, pct, total, nb, groups };
-}
-function sheetAuto() {
-  const P = autoPlan();
-  const blocks = ['need', 'want', 'save'].map(g => {
-    const all = S.expCats.filter(c => !c.hidden && c.group === g);
-    const G = P.groups[g];
-    return `<div class="ag"><div class="ag-h"><b>${GRP[g]}</b><span><input class="in pct" data-chg="autopct" data-g="${g}" inputmode="numeric" value="${esc(auto.pct[g])}" aria-label="สัดส่วน ${GRP[g]}">%</span></div>
-    ${all.length ? all.map(c => {
-      const on = !auto.off[c.id];
-      const i = G.cs.indexOf(c);
-      return `<div class="ar ${on ? '' : 'dim'}"><input type="checkbox" data-chg="autotick" data-id="${c.id}" ${on ? 'checked' : ''} aria-label="ใช้หมวด ${esc(c.name)}"><span class="an">${c.icon || '🏷️'} ${esc(c.name)}</span>
-      <input class="in wt" data-chg="autow" data-id="${c.id}" inputmode="decimal" value="${esc(auto.w[c.id] || '1')}" ${on ? '' : 'disabled'} aria-label="น้ำหนัก"><span class="av">${on && i >= 0 && P.nb[c.id] ? money(P.nb[c.id]) : '-'}</span></div>`;
-    }).join('') : '<div class="empty">ไม่มีหมวดในกลุ่มนี้</div>'}
-    ${all.length && !G.cs.length ? '<p class="note">ไม่ได้เลือกหมวดในกลุ่มนี้ งบกลุ่มนี้จึงไม่ถูกแจกจ่าย</p>' : ''}</div>`;
-  }).join('');
-  const ok = P.inc > 0 && Math.round(P.total) === 100;
-  return `
-  <div class="panel-h"><h2>เติมงบอัตโนมัติ</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
-  <p class="mute">ติ๊กหมวดที่ใช้ ปรับสัดส่วนของแต่ละกลุ่มได้ (เริ่มต้น 50/30/20) และปรับน้ำหนักในกลุ่มได้ ตัวเลขน้ำหนักมาก หมวดนั้นได้งบมากขึ้น ปัดเป็นหลักสิบบาท</p>
-  <label class="f" for="a-inc">รายรับต่อเดือน (บาท)</label>
-  <input id="a-inc" class="in" data-chg="autoinc" inputmode="numeric" value="${esc(auto.income)}" placeholder="0">
-  <p class="note ${Math.round(P.total) === 100 ? '' : 'neg'}">สัดส่วนรวม ${Math.round(P.total * 10) / 10}% ${Math.round(P.total) === 100 ? '' : '(ต้องรวมเป็น 100%)'}</p>
-  ${blocks}
-  <div class="warnbox" style="margin-top:12px">งบที่ตั้งไว้เดิมทุกหมวดจะถูกแทนที่</div>
-  <button class="btn" data-act="autoapply" ${ok ? '' : 'disabled'}>เติมงบ</button>`;
-}
-
 const EMOJIS = ['🍚', '🍜', '🍕', '🍔', '🍰', '☕', '🍺', '🛒', '🧴', '👕', '👟', '👜', '🚌', '🚗', '⛽', '🏠', '💡', '📱', '💻', '🎮', '📚', '🎓', '🎬', '🎵', '⚽', '🏋️', '🧘', '💊', '🏥', '🐶', '🐱', '👶', '🎁', '💍', '✈️', '🏖️', '🛠️', '💼', '💰', '📈', '🏦', '🛡️', '🧾', '❤️', '🌿', '⭐', '🎨', '🙂'];
 function sheetNewCat() {
   const inc = form.type === 'income';
@@ -843,7 +827,6 @@ function renderSheet() {
   if (sheet.kind === 'newcat') html = sheetNewCat();
   else if (sheet.kind === 'edit') html = sheetEdit();
   else if (sheet.kind === 'settings') html = sheetSettings();
-  else if (sheet.kind === 'auto') html = sheetAuto();
   else if (sheet.kind === 'policy') html = sheetPolicy();
   root.innerHTML = `<div class="ov" data-act="ovclose"><div class="panel" role="dialog" aria-modal="true">${html}</div></div>`;
   const p = $('.panel', root);
@@ -900,10 +883,6 @@ function onChg(el) {
     if (k === 'cathide') c.hidden = el.checked;
     save(); render(); renderSheet(); return;
   }
-  if (k === 'autoinc') { auto.income = String(el.value).replace(/[^0-9.]/g, ''); renderSheet(); return; }
-  if (k === 'autopct') { auto.pct[el.dataset.g] = String(el.value).replace(/[^0-9.]/g, ''); renderSheet(); return; }
-  if (k === 'autotick') { if (el.checked) delete auto.off[id]; else auto.off[id] = true; renderSheet(); return; }
-  if (k === 'autow') { const w = String(el.value).replace(/[^0-9.]/g, ''); if (parseFloat(w) > 0) auto.w[id] = w; else delete auto.w[id]; renderSheet(); return; }
   if (k === 'import') {
     const f = el.files && el.files[0];
     if (!f) return;
@@ -1028,7 +1007,7 @@ function act(a, t) {
     case 'caltoday': { const d = new Date(); setCalMonth(d.getFullYear(), d.getMonth()); render(); break; }
     case 'selday': {
       const [y, m] = t.dataset.date.split('-').map(Number);
-      ui.calSel = t.dataset.date; ui.calY = y; ui.calM = m - 1; render(); break;
+      ui.calSel = t.dataset.date; ui.calY = y; ui.calM = m - 1; render(); window.scrollTo(0, 0); break;
     }
     case 'addday': form.date = ui.calSel; ui.tab = 'entry'; render(); window.scrollTo(0, 0); break;
 
@@ -1044,18 +1023,6 @@ function act(a, t) {
     /* งบ */
     case 'budprev': [ui.budY, ui.budM] = shiftMonth(ui.budY, ui.budM, -1); render(); break;
     case 'budnext': [ui.budY, ui.budM] = shiftMonth(ui.budY, ui.budM, 1); render(); break;
-    case 'autobud': {
-      const inc = summarize(monthTx(ui.budY, ui.budM)).inc;
-      auto = { income: inc > 0 ? String(Math.round(inc)) : '', pct: { need: '50', want: '30', save: '20' }, off: {}, w: {} };
-      openSheet({ kind: 'auto' }); break;
-    }
-    case 'autoapply': {
-      const P = autoPlan();
-      if (!(P.inc > 0)) { toast('ใส่รายรับต่อเดือนก่อน'); return; }
-      if (Math.round(P.total) !== 100) { toast('สัดส่วนต้องรวมเป็น 100%'); return; }
-      S.budgets = P.nb; save(); closeSheet(); render(); toast('เติมงบแล้ว'); break;
-    }
-
     /* ตั้งค่า */
     case 'addcat': {
       const name = nc.name.trim();

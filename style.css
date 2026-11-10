@@ -260,3 +260,32 @@ body.kpopen #toast{bottom:340px}
 #toast{z-index:10}
 .mute.one{font-size:15px;white-space:nowrap}
 .note.two{font-size:13px;line-height:1.5;white-space:nowrap}
+
+.calfix{position:sticky;top:var(--topH,56px);z-index:4;background:var(--bg);padding:2px 0 6px;margin:0 -2px;box-shadow:0 6px 8px -6px rgba(0,0,0,.18)}
+.calfix .mnav{margin-bottom:4px}
+.calfix .cell{min-height:44px}
+.calfix .sum3{margin-bottom:6px;gap:6px}.calfix .sum2{margin-bottom:0;gap:6px}
+.calfix .sum3 div,.calfix .sum2 div{padding:4px 6px;border-radius:10px;box-shadow:none}
+.calfix .sum3 small,.calfix .sum2 small{font-size:12px;line-height:1.2}
+.calfix .sum3 b,.calfix .sum2 b{font-size:14.5px}
+.mtitle small .chip{margin-left:6px;min-height:24px;padding:1px 10px;font-size:12.5px}
+.dh-r{display:flex;align-items:center;gap:8px}
+.dh-r .chip{min-height:28px;padding:2px 12px}
+.dayhead.cur b:first-child{color:var(--teal)}
+.bgrp{margin-bottom:18px}
+.bg-h{display:flex;justify-content:space-between;align-items:baseline;font-size:17px}
+.bg-h b{color:var(--teal);font-weight:600}
+.bg-p{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;font-size:15px}
+.bg-p small{color:var(--mute)}
+
+.calfix .mnav{margin-bottom:2px}
+.calfix .mnav button{min-height:34px;width:40px;padding:0;font-size:20px}
+.calfix .mtitle{line-height:1.15}.calfix .mtitle b{font-size:17px}.calfix .mtitle small{font-size:12.5px}
+.calfix .cal{gap:2px}
+.calfix .cal .dow{padding:1px 0;font-size:12px}
+.calfix .cell{min-height:36px;padding:2px;font-size:9px;line-height:1.1;border-radius:6px}
+.calfix .cell .dn{font-size:11px;min-width:18px}
+.calfix .sum3 div,.calfix .sum2 div{display:flex;justify-content:space-between;align-items:baseline;gap:4px;padding:3px 8px}
+.calfix .sum3 small,.calfix .sum2 small{display:inline;font-size:11.5px}
+.calfix .sum3 b,.calfix .sum2 b{font-size:13.5px}
+.calfix .sum3{margin-top:4px!important;margin-bottom:4px}
