@@ -5,6 +5,7 @@
 // ใส่ลิงก์รับรายชื่อ (เช่น Google Apps Script Web App) ที่นี่ ถ้าเว้นว่าง แอปจะไม่ส่งข้อมูลไปไหน
 // Supabase: ใส่ Project URL และ publishable (anon) key ที่นี่ (ปลอดภัยที่จะเปิดเผย เพราะตารางจำกัดให้เพิ่มข้อมูลได้อย่างเดียว)
 const CONFIG = { SUPABASE_URL: 'https://oxkkcaocvuscfkfejwvd.supabase.co', SUPABASE_KEY: 'sb_publishable_QOFzP9Kw7cvC32q-GnSl0g_oCkrCzUe' };
+const APP_VERSION = 'v18';
 const CONSENT_VERSION = 'v1-2026-11';
 const KEY = 'wealthnote.v1';
 
@@ -349,7 +350,7 @@ function installCard() {
 function viewRegister() {
   const st = reg.mode === 'student';
   return `
-  <div class="regtop"><img src="assets/logo_teal.png" alt="WDC GROUP"><h1>Wealth Note</h1><p>สมุดรายรับ-รายจ่ายจาก WDC</p></div>
+  <div class="regtop"><img src="assets/logo_teal.png" alt="WDC GROUP"><h1>Wealth Note</h1><p>สมุดรายรับ-รายจ่ายจาก WDC</p><small style="color:var(--mut,#888)">${APP_VERSION}</small></div>
   ${installCard()}
   <div class="seg" role="tablist">
     <button class="${st ? 'on' : ''}" data-act="regmode" data-v="student">นักเรียน</button>
@@ -784,7 +785,7 @@ function sheetSettings() {
       <button class="mi" data-act="spage" data-v="rec"><span>รายการประจำ</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="backup"><span>สำรองและกู้คืนข้อมูล</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="me"><span>ข้อมูลของฉัน</span><span>›</span></button>
-      <button class="mi" data-act="spage" data-v="reset"><span>ล้างข้อมูลทั้งหมด</span><span>›</span></button></div>`;
+      <button class="mi" data-act="spage" data-v="reset"><span>ล้างข้อมูลทั้งหมด</span><span>›</span></button></div><p class="note" style="text-align:center;margin-top:10px">เวอร์ชันแอป ${APP_VERSION}</p>`;
   }
   if (p === 'exp' || p === 'inc') {
     const isInc = p === 'inc';
@@ -1122,6 +1123,8 @@ submitLead();
 render();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => { /* ไม่เป็นไร ใช้งานต่อได้ */ }); });
+  const hadCtl = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtl && !window.__reloaded) { window.__reloaded = true; location.reload(); } });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => { /* ไม่เป็นไร ใช้งานต่อได้ */ }); });
 }
 })();

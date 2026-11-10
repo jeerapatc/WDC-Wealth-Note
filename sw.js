@@ -1,5 +1,5 @@
 // Service worker: เปิดแอปได้แม้ไม่มีเน็ต (ลองโหลดใหม่ก่อน ถ้าไม่ได้ใช้ของที่เก็บไว้)
-const CACHE = 'wealth-note-v17';
+const CACHE = 'wealth-note-v18';
 const ASSETS = [
   './', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
   'assets/logo_teal.png', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png',
@@ -8,7 +8,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(a => fetch(a, { cache: 'reload' }).then(r => { if (r.ok) return c.put(a, r); })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -23,7 +23,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   e.respondWith(
-    fetch(req)
+    fetch(req.url, { cache: 'reload' })
       .then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(req, copy));
