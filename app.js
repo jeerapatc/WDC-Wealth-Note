@@ -137,6 +137,7 @@ const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.get
 const today = () => ymd(new Date());
 const daysIn = (y, m) => new Date(y, m + 1, 0).getDate(); // m เริ่มที่ 0
 const r2 = n => Math.round(n * 100) / 100;
+const tcal = n => Math.abs(n) >= 1e4 && Math.abs(n) < 1e6 ? money(Math.round(n)) : tnum(n);
 const tnum = n => Math.abs(n) >= 1e6 ? (n < 0 ? '-' : '') + compact(Math.abs(n)) : money(n);
 const money = n => r2(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -611,13 +612,13 @@ function viewCal() {
     <button data-act="calnext" aria-label="เดือนถัดไป">›</button></div>
   <div class="cal">${head}${cells}</div>
   <div class="sum3" style="margin-top:8px">
-    <div><small>รายรับ</small><b class="inc">${tnum(inc)}</b></div>
-    <div><small>รายจ่าย</small><b class="exp">${tnum(exp)}</b></div>
-    <div><small>รวม</small><b class="${bal < 0 ? 'neg' : 'pos'}">${bal > 0 ? '+' : ''}${tnum(bal)}</b></div>
+    <div><small>รายรับ</small><b class="inc">${tcal(inc)}</b></div>
+    <div><small>รายจ่าย</small><b class="exp">${tcal(exp)}</b></div>
+    <div><small>รวม</small><b class="${bal < 0 ? 'neg' : 'pos'}">${bal > 0 ? '+' : ''}${tcal(bal)}</b></div>
   </div>
   <div class="sum2">
-    <div><small>ยอดยกมา</small><b class="${prev < 0 ? 'neg' : ''}">${tnum(prev)}</b></div>
-    <div><small>คงเหลือสะสม</small><b class="${prev + bal < 0 ? 'neg' : 'pos'}">${tnum(prev + bal)}</b></div>
+    <div><small>ยอดยกมา</small><b class="${prev < 0 ? 'neg' : ''}">${tcal(prev)}</b></div>
+    <div><small>คงเหลือสะสม</small><b class="${prev + bal < 0 ? 'neg' : 'pos'}">${tcal(prev + bal)}</b></div>
   </div>
   </div>
   ${sections}`;
