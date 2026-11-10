@@ -330,3 +330,4 @@ label.f{margin-top:8px}
 .bchk b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .brow.off{padding:7px 0}
 .brow.off .bchk{color:var(--mute)}.brow.off .bchk b{font-weight:500}
+.install{margin-bottom:12px}
