@@ -9,6 +9,7 @@
   --bg:#F7F5F0;--card:#fff;--line:#E4DFD3;
   --ink:#1F2D2D;--mute:#5F6F6F;
   --inc:#2F7D5B;--exp:#B5443F;--warn:#C58A1B;
+  --sh:0 1px 2px rgba(31,45,45,.05),0 6px 16px rgba(51,102,103,.08);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink)}
@@ -166,3 +167,28 @@ label.f{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 /* toast */
 #toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:22px;font-size:15px;opacity:0;pointer-events:none;transition:.2s;z-index:30;max-width:90%;text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---- ปรับโฉม ---- */
+.card,.list,.sum3 div,.seg,.tile,.cell{box-shadow:var(--sh)}
+.seg button.on{box-shadow:0 2px 6px rgba(31,45,45,.18)}
+.hero{background:linear-gradient(135deg,#336667 0%,#2A5455 100%);color:#fff;border-radius:18px;padding:16px 18px;margin-bottom:12px;box-shadow:0 8px 22px rgba(51,102,103,.28);position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(173,148,102,.28)}
+.hero small{color:#D8E6E6;display:block}
+.hero>b{display:block;font-size:34px;font-weight:600;line-height:1.2;margin:2px 0 8px}
+.hero-r{display:flex;gap:18px;font-size:14px;color:#D8E6E6;position:relative;z-index:1}
+.hero-r b{color:#fff;font-weight:600;margin-left:4px}
+.kpicard{background:linear-gradient(135deg,#336667 0%,#2A5455 100%);border:0;color:#fff}
+.kpicard .kpi b{color:#fff}
+.kpicard small{color:#D8E6E6}
+.tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:68px;font-size:13.5px}
+.tile .ti{font-size:24px;line-height:1.1}
+.ico{font-size:22px;width:32px;text-align:center;flex:none}
+.row{justify-content:flex-start}
+.row>:last-child{margin-left:auto}
+.nav button.on svg{background:var(--teal-l);border-radius:12px;padding:3px;width:36px;height:30px;box-sizing:border-box}
+.in.ei{flex:none;width:56px;text-align:center;padding-left:4px;padding-right:4px}
+.pol{margin-bottom:12px}
+.pol h3{font-size:15px;font-weight:600;color:var(--teal);margin-bottom:2px}
+.pol p,.pol li{font-size:14.5px;color:var(--ink)}
+.pol ul{margin:2px 0 0;padding-left:20px}
+.why p{margin:0}

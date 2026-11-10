@@ -20,20 +20,21 @@ const GCOL = {
 
 // หมวดรายจ่าย: id, ชื่อ, กลุ่ม 50/30/20 (ผู้ใช้แก้กลุ่มและซ่อนหมวดได้ในตั้งค่า)
 const DEFAULT_EXP = [
-  ['food', 'อาหาร', 'need'], ['clothes', 'เสื้อผ้า', 'need'], ['travel', 'เดินทาง', 'need'],
-  ['home', 'ที่อยู่อาศัย', 'need'], ['health', 'ค่ายาและการรักษา', 'need'], ['insurance', 'ประกัน', 'need'],
-  ['social', 'สังสรรค์', 'want'], ['shop', 'ช้อปปิ้ง', 'want'], ['sub', 'Subscription', 'want'],
-  ['care', 'ดูแลตัวเอง', 'want'], ['gift', 'ของขวัญ', 'want'], ['wellness', 'Wellness', 'want'],
-  ['exercise', 'ออกกำลังกาย', 'want'], ['books', 'หนังสือและเกม', 'want'], ['trip', 'ท่องเที่ยว', 'want'],
-  ['saving', 'เงินออม', 'save'], ['invest', 'ลงทุน', 'save']
+  ['food', 'อาหาร', 'need', '🍚'], ['clothes', 'เสื้อผ้า', 'need', '👕'], ['travel', 'เดินทาง', 'need', '🚌'],
+  ['home', 'ที่อยู่อาศัย', 'need', '🏠'], ['health', 'ค่ายาและการรักษา', 'need', '💊'], ['insurance', 'ประกัน', 'need', '🛡️'],
+  ['saving', 'เงินออม', 'save', '💰'], ['invest', 'ลงทุน', 'save', '📈'],
+  ['social', 'สังสรรค์', 'want', '🍻'], ['shop', 'ช้อปปิ้ง', 'want', '🛍️'], ['sub', 'Subscription', 'want', '📱'],
+  ['care', 'ดูแลตัวเอง', 'want', '💆'], ['gift', 'ของขวัญ/ให้ผู้อื่น', 'want', '🎁'], ['wellness', 'Wellness', 'want', '🌿'],
+  ['exercise', 'ออกกำลังกาย', 'want', '🏃'], ['trip', 'ท่องเที่ยว', 'want', '✈️']
 ];
+const INC_ICONS = { salary: '💼', side: '💻', gift: '🎁', invret: '📈', other: '✨' };
 const incomeDefaults = mode => [
   { id: 'salary', name: mode === 'student' ? 'ค่าขนม' : 'เงินเดือน' },
   { id: 'side', name: 'งานเสริม' },
   { id: 'gift', name: 'ของขวัญ/ครอบครัว' },
   { id: 'invret', name: 'ผลตอบแทนลงทุน' },
   { id: 'other', name: 'อื่นๆ' }
-].map(c => ({ id: c.id, name: c.name, hidden: false }));
+].map(c => ({ id: c.id, name: c.name, icon: c.id === 'salary' && mode === 'student' ? '👛' : INC_ICONS[c.id], hidden: false }));
 
 /* ================= ตัวช่วย ================= */
 const $ = (s, r) => (r || document).querySelector(s);
@@ -67,16 +68,38 @@ function toast(msg) {
 /* ================= ข้อมูล ================= */
 let mem = null;
 const fresh = () => ({
-  v: 1, profile: null,
-  expCats: DEFAULT_EXP.map(([id, name, group]) => ({ id, name, group, hidden: false })),
+  v: 1, mig: 2, profile: null,
+  expCats: DEFAULT_EXP.map(([id, name, group, icon]) => ({ id, name, group, icon, hidden: false })),
   incCats: [], tx: [], budgets: {}, recurring: [], logDays: [], skipKeys: []
 });
 function load() {
   try {
     const r = localStorage.getItem(KEY);
-    if (r) { const o = JSON.parse(r); if (o && o.v === 1) return o; }
+    if (r) { const o = JSON.parse(r); if (o && o.v === 1) return migrate(o); }
   } catch (e) { /* ใช้ค่าเริ่มต้น */ }
   return mem || fresh();
+}
+function migrate(o) {
+  if (o.mig >= 2) return o;
+  const ic = {};
+  DEFAULT_EXP.forEach(c => { ic[c[0]] = c[3]; });
+  (o.expCats || []).forEach(c => { if (!c.icon) c.icon = ic[c.id] || '🏷️'; });
+  (o.incCats || []).forEach(c => { if (!c.icon) c.icon = INC_ICONS[c.id] || '🏷️'; });
+  const bi = o.expCats.findIndex(c => c.id === 'books');
+  if (bi >= 0) {
+    if ((o.tx || []).some(t => t.cat === 'books')) o.expCats[bi].hidden = true;
+    else { o.expCats.splice(bi, 1); if (o.budgets) delete o.budgets.books; }
+  }
+  const g = o.expCats.find(c => c.id === 'gift');
+  if (g && g.name === 'ของขวัญ') g.name = 'ของขวัญ/ให้ผู้อื่น';
+  const moved = ['saving', 'invest'].map(id => o.expCats.find(c => c.id === id)).filter(Boolean);
+  if (moved.length) {
+    o.expCats = o.expCats.filter(c => c.id !== 'saving' && c.id !== 'invest');
+    const ii = o.expCats.findIndex(c => c.id === 'insurance');
+    o.expCats.splice(ii >= 0 ? ii + 1 : o.expCats.length, 0, ...moved);
+  }
+  o.mig = 2;
+  return o;
 }
 let S = load();
 function save() {
@@ -95,13 +118,14 @@ let reg = { mode: 'worker', name: '', age: '', phone: '', school: '', consent: f
 let sheet = null;
 let edit = null;
 let rec = { type: 'expense', cat: '', amount: '', day: '1', note: '' };
-let nc = { name: '', group: 'want' };
+let nc = { name: '', group: 'want', icon: '' };
 let auto = { income: '' };
 const B = { reg: () => reg, form: () => form, edit: () => edit, rec: () => rec, nc: () => nc, auto: () => auto };
 
 /* ================= คำนวณ ================= */
 const catList = type => (type === 'income' ? S.incCats : S.expCats);
 const catName = (type, id) => { const c = catList(type).find(x => x.id === id); return c ? c.name : 'ไม่ระบุ'; };
+const catIcon = (type, id) => { const c = catList(type).find(x => x.id === id); return (c && c.icon) || '🏷️'; };
 const groupOf = id => { const c = S.expCats.find(x => x.id === id); return c ? c.group : 'want'; };
 
 function summarize(txs) {
@@ -196,10 +220,13 @@ function viewRegister() {
   return `
   <div class="regtop"><img src="assets/logo_teal.png" alt="WDC GROUP"><h1>Wealth Note</h1><p>สมุดรายรับ-รายจ่ายจาก WDC</p></div>
   ${installCard()}
-  <div class="why">ขอข้อมูลสั้นๆ ก่อนเริ่มใช้ เพราะทีม WDC อยากติดต่อกลับ เพื่อให้คำแนะนำการเงินที่ตรงกับคุณจริงๆ และอยากช่วยเหลือคุณ รายการรายรับ-รายจ่ายที่คุณจด จะเก็บในเครื่องนี้เท่านั้น</div>
+  <div class="why">
+    <p><b>ทำไมต้องขอข้อมูล</b><br>ทีม WDC อยากติดต่อกลับ เพื่อให้คำแนะนำการเงินที่ตรงกับคุณจริงๆ และอยากช่วยเหลือคุณ</p>
+    <p style="margin-top:8px"><b>เราเก็บ:</b> ${st ? 'ชื่อเล่น อายุ โรงเรียน' : 'ชื่อ อายุ เบอร์โทร'}<br><b>เราไม่เก็บ:</b> รายการรายรับ-รายจ่าย งบ และหมวดที่คุณจด ข้อมูลเหล่านี้อยู่ในเครื่องของคุณเท่านั้น</p>
+  </div>
   <div class="seg" role="tablist">
     <button class="${st ? 'on' : ''}" data-act="regmode" data-v="student">นักเรียน</button>
-    <button class="${!st ? 'on' : ''}" data-act="regmode" data-v="worker">คนทำงาน</button>
+    <button class="${!st ? 'on' : ''}" data-act="regmode" data-v="worker">วัยทำงาน</button>
   </div>
   <label class="f" for="r-name">${st ? 'ชื่อเล่น' : 'ชื่อจริง'}</label>
   <input id="r-name" class="in" data-bind="reg.name" value="${esc(reg.name)}" autocomplete="${st ? 'nickname' : 'given-name'}">
@@ -210,21 +237,28 @@ function viewRegister() {
     : `<label class="f" for="r-phone">เบอร์โทร</label><input id="r-phone" class="in" data-bind="reg.phone" inputmode="tel" autocomplete="tel" value="${esc(reg.phone)}">`}
   <div class="consent">
     <input type="checkbox" id="r-ok" data-bind="reg.consent" ${reg.consent ? 'checked' : ''}>
-    <label for="r-ok">ฉันยินยอมให้ WDC GROUP เก็บและใช้ข้อมูลนี้เพื่อติดต่อกลับ <button type="button" data-act="policy">อ่านนโยบายสั้นๆ</button></label>
+    <label for="r-ok">ฉันยินยอมให้ WDC GROUP เก็บและใช้ข้อมูลข้างต้นเพื่อติดต่อกลับให้คำแนะนำด้านการเงิน และได้อ่าน <button type="button" data-act="policy">นโยบายความเป็นส่วนตัว</button> แล้ว</label>
   </div>
   <button id="regbtn" class="btn" data-act="register" ${regValid() ? '' : 'disabled'}>เริ่มใช้งาน</button>`;
 }
 
 function sheetPolicy() {
+  const sec = (n, t, body) => `<div class="pol"><h3>${n}. ${t}</h3>${body}</div>`;
   return `
-  <div class="panel-h"><h2>นโยบายข้อมูลส่วนบุคคล</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
-  <div class="warnbox">ร่างสำหรับทดสอบ ยังไม่ผ่านการตรวจทางกฎหมาย ต้องให้ผู้เชี่ยวชาญตรวจก่อนใช้จริง</div>
+  <div class="panel-h"><h2>นโยบายความเป็นส่วนตัว</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
+  <div class="warnbox">ร่างสำหรับทดสอบ ยังไม่ผ่านการตรวจทางกฎหมาย ข้อความในวงเล็บเหลี่ยม [ ] ต้องให้ WDC กรอกและยืนยันก่อนใช้จริง</div>
   <div class="card">
-    <p><b>เก็บอะไร:</b> ${'ชื่อหรือชื่อเล่น อายุ และเบอร์โทร (คนทำงาน) หรือโรงเรียน (นักเรียน)'}</p>
-    <p style="margin-top:8px"><b>ใช้ทำอะไร:</b> ให้ทีม WDC GROUP ติดต่อกลับ เพื่อให้ความรู้และคำแนะนำด้านการเงิน</p>
-    <p style="margin-top:8px"><b>รายการรายรับ-รายจ่าย:</b> เก็บในเครื่องของคุณเท่านั้น ไม่ส่งให้ WDC</p>
-    <p style="margin-top:8px"><b>เก็บนานเท่าไร:</b> [WDC ระบุ]</p>
-    <p style="margin-top:8px"><b>ขอแก้ไขหรือลบข้อมูล:</b> [WDC ระบุช่องทางติดต่อ]</p>
+    ${sec(1, 'ผู้ควบคุมข้อมูลส่วนบุคคล', '<p>WDC GROUP [ระบุชื่อนิติบุคคล ที่อยู่ และช่องทางติดต่อ]</p>')}
+    ${sec(2, 'ข้อมูลที่เราเก็บ', '<ul><li>นักเรียน: ชื่อเล่น อายุ โรงเรียน (ไม่เก็บเบอร์โทร)</li><li>วัยทำงาน: ชื่อ อายุ เบอร์โทร</li><li>วันและเวลาที่คุณให้ความยินยอม</li></ul>')}
+    ${sec(3, 'ข้อมูลที่เราไม่เก็บ', '<p>รายการรายรับ-รายจ่าย งบประมาณ และหมวดที่คุณบันทึกในแอป ข้อมูลเหล่านี้อยู่ในเครื่องของคุณเท่านั้น ไม่ถูกส่งให้ WDC</p>')}
+    ${sec(4, 'เก็บไปทำอะไร', '<p>เพื่อให้ทีม WDC GROUP ติดต่อกลับ ให้ความรู้และคำแนะนำด้านการเงินที่เหมาะกับคุณ [WDC ยืนยันว่ามีวัตถุประสงค์อื่นหรือไม่ ถ้ามี ต้องระบุและขอความยินยอมแยก]</p>')}
+    ${sec(5, 'เราใช้ข้อมูลของคุณด้วยเหตุผลใด', '<p>ความยินยอมของคุณ ซึ่งคุณถอนได้ทุกเมื่อ</p>')}
+    ${sec(6, 'เปิดเผยข้อมูลให้ใคร', '<p>ทีมงาน WDC GROUP ที่จำเป็นต้องติดต่อกลับ และผู้ให้บริการที่ใช้เก็บรายชื่อ [WDC ระบุชื่อผู้ให้บริการและประเทศที่เก็บข้อมูล] [WDC ยืนยันว่าไม่ขายหรือแบ่งปันข้อมูลให้บุคคลอื่นเพื่อการตลาด]</p>')}
+    ${sec(7, 'เก็บนานเท่าไร', '<p>[WDC ระบุระยะเวลา และเกณฑ์การลบข้อมูล]</p>')}
+    ${sec(8, 'การรักษาความปลอดภัย', '<p>[WDC ระบุมาตรการ เช่น ผู้มีสิทธิ์เข้าถึงข้อมูล และการป้องกันการเข้าถึงโดยไม่ได้รับอนุญาต]</p>')}
+    ${sec(9, 'สิทธิของคุณ', '<p>คุณขอเข้าถึงหรือขอสำเนาข้อมูล ขอแก้ไข ขอลบ ขอระงับการใช้ คัดค้านการใช้ และถอนความยินยอมได้ ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 ติดต่อได้ที่ [WDC ระบุช่องทางและระยะเวลาตอบกลับ]</p>')}
+    ${sec(10, 'นักเรียนและผู้เยาว์', '<p>[ให้ผู้เชี่ยวชาญตรวจ เรื่องการขอความยินยอมจากผู้ปกครองสำหรับผู้ที่อายุต่ำกว่า 18 ปี]</p>')}
+    ${sec(11, 'การเปลี่ยนแปลงนโยบาย', '<p>หากมีการแก้ไขนโยบาย เราจะแจ้งในแอปและขอความยินยอมใหม่เมื่อจำเป็น เวอร์ชัน ' + CONSENT_VERSION + '</p>')}
   </div>`;
 }
 
@@ -257,30 +291,38 @@ function render() {
 function txRow(t) {
   const sign = t.type === 'income' ? '+' : '-';
   return `<button class="row" data-act="edit" data-id="${t.id}">
-    <span class="r-main"><b>${esc(catName(t.type, t.cat))}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span>
+    <span class="ico">${catIcon(t.type, t.cat)}</span><span class="r-main"><b>${esc(catName(t.type, t.cat))}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span>
     <span class="amt ${t.type === 'income' ? 'inc' : 'exp'}">${sign}${money(t.amount)}</span></button>`;
 }
 function viewEntry() {
   const cats = catList(form.type).filter(c => !c.hidden);
   const list = S.tx.filter(t => t.date === form.date).slice().reverse();
   const sm = summarize(list);
+  const cur = new Date();
+  const mm = summarize(monthTx(cur.getFullYear(), cur.getMonth()));
   const n = streak();
   const loggedToday = S.logDays.includes(today());
   const banner = n === 0
-    ? 'เริ่มบันทึกวันนี้ได้เลย'
-    : (loggedToday ? `บันทึกต่อเนื่อง ${n} วัน` : `ต่อเนื่อง ${n} วัน วันนี้ยังไม่ได้บันทึก`);
+    ? '✍️ เริ่มบันทึกวันนี้ได้เลย'
+    : (loggedToday ? `🔥 บันทึกต่อเนื่อง ${n} วัน` : `🔥 ต่อเนื่อง ${n} วัน วันนี้ยังไม่ได้บันทึก`);
+  const left = mm.inc - mm.exp;
   return `
+  <div class="hero">
+    <small>คงเหลือเดือนนี้ (${TH_M[cur.getMonth()]} ${cur.getFullYear() + 543})</small>
+    <b>${money(left)}</b>
+    <div class="hero-r"><span>รายรับ <b>${money(mm.inc)}</b></span><span>รายจ่าย <b>${money(mm.exp)}</b></span></div>
+  </div>
   <div class="banner">${banner}</div>
   <div class="seg inc" role="tablist">
     <button class="${form.type === 'expense' ? 'on' : ''}" data-act="ftype" data-v="expense">รายจ่าย</button>
     <button class="${form.type === 'income' ? 'on' : ''}" data-act="ftype" data-v="income">รายรับ</button>
   </div>
-  <label class="f" for="f-amt">จำนวนเงิน (บาท)</label>
-  <input id="f-amt" class="in big" data-bind="form.amount" data-num="1" inputmode="decimal" placeholder="0" value="${esc(form.amount)}">
-  <label class="f">หมวด</label>
-  <div class="tiles">${cats.map(c => `<button class="tile ${form.cat === c.id ? 'sel' : ''} ${form.type}" data-act="pickcat" data-id="${c.id}">${esc(c.name)}</button>`).join('')}</div>
   <label class="f" for="f-note">โน้ต (ไม่บังคับ)</label>
   <input id="f-note" class="in" data-bind="form.note" placeholder="เช่น ข้าวมันไก่" value="${esc(form.note)}" maxlength="80">
+  <label class="f" for="f-amt">จำนวนเงิน (บาท)</label>
+  <input id="f-amt" class="in" data-bind="form.amount" data-num="1" inputmode="decimal" placeholder="0" value="${esc(form.amount)}">
+  <label class="f">หมวด</label>
+  <div class="tiles">${cats.map(c => `<button class="tile ${form.cat === c.id ? 'sel' : ''} ${form.type}" data-act="pickcat" data-id="${c.id}"><span class="ti">${c.icon || '🏷️'}</span><span>${esc(c.name)}</span></button>`).join('')}</div>
   <label class="f" for="f-date">วันที่</label>
   <input id="f-date" type="date" class="in" data-bind="form.date" data-rerender="1" value="${form.date}">
   <div class="stickysave"><button class="btn" data-act="submit">บันทึก</button></div>
@@ -402,7 +444,7 @@ function viewReport() {
 
   const donutBlock = r.exp > 0
     ? `<div class="donutwrap">${donut(slices, r.exp)}</div>
-       <div class="legend">${slices.map(s => `<div class="lg"><span class="sw" style="background:${s.color}"></span><span class="nm">${esc(s.name)}</span><span class="pc">${Math.round(s.v / r.exp * 100)}%</span><span class="vl">${money(s.v)}</span></div>`).join('')}</div>`
+       <div class="legend">${slices.map(s => `<div class="lg"><span class="sw" style="background:${s.color}"></span><span class="nm">${catIcon('expense', s.id)} ${esc(s.name)}</span><span class="pc">${Math.round(s.v / r.exp * 100)}%</span><span class="vl">${money(s.v)}</span></div>`).join('')}</div>`
     : '<div class="empty">ยังไม่มีรายจ่ายในช่วงนี้</div>';
 
   const g532 = r.inc > 0
@@ -421,7 +463,7 @@ function viewReport() {
     <div><small>รายจ่ายรวม</small><b class="exp">${money(r.exp)}</b></div>
     <div><small>คงเหลือ</small><b class="${r.inc - r.exp < 0 ? 'neg' : 'pos'}">${money(r.inc - r.exp)}</b></div>
   </div>
-  <div class="card"><div class="kpi"><span>อัตราออม <small>(เงินออม + ลงทุน ÷ รายรับ)</small></span><b>${rate}</b></div></div>
+  <div class="card kpicard"><div class="kpi"><span>💰 อัตราออม <small>(เงินออม + ลงทุน ÷ รายรับ)</small></span><b>${rate}</b></div></div>
   <h2 class="sec">รายจ่ายตามหมวด</h2><div class="card">${donutBlock}</div>
   <h2 class="sec">เทียบกับ 50/30/20</h2><div class="card">${g532}</div>
   ${mode === 'month'
@@ -444,7 +486,7 @@ function viewBudget() {
     const meta = b > 0
       ? `${isSave ? 'ออมแล้ว' : 'ใช้'} ${money(used)} จาก ${money(b)} (${Math.round(pct)}%)${pct > 100 && !isSave ? ` เกิน ${money(used - b)}` : ''}`
       : `ยังไม่ได้ตั้งงบ${used > 0 ? ` (ใช้ไป ${money(used)})` : ''}`;
-    return `<div class="brow"><div class="brow-top"><div><b>${esc(c.name)}</b> <small>${GRP[c.group]}</small></div>
+    return `<div class="brow"><div class="brow-top"><div>${c.icon || '🏷️'} <b>${esc(c.name)}</b> <small>${GRP[c.group]}</small></div>
       <label class="binp"><input inputmode="numeric" data-chg="budget" data-id="${c.id}" value="${b ? b : ''}" placeholder="0" aria-label="งบต่อเดือน ${esc(c.name)}"> บาท</label></div>
       <div class="bar"><i class="${cls}" style="width:${Math.min(pct, 100).toFixed(1)}%"></i></div><div class="bmeta">${meta}</div></div>`;
   }).join('');
@@ -464,7 +506,7 @@ function sheetAuto() {
   <div class="panel-h"><h2>เติมงบอัตโนมัติ 50/30/20</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
   <p>แบ่งรายรับต่อเดือนเป็น จำเป็น 50%, อยากได้ 30%, ออม 20% แล้วหารเท่ากันในแต่ละหมวดของกลุ่ม ปัดเป็นหลักสิบบาท เป็นจุดเริ่มต้นให้ปรับเองต่อ</p>
   <label class="f" for="a-inc">รายรับต่อเดือน (บาท)</label>
-  <input id="a-inc" class="in big" data-bind="auto.income" data-num="1" inputmode="numeric" value="${esc(auto.income)}" placeholder="0">
+  <input id="a-inc" class="in" data-bind="auto.income" data-num="1" inputmode="numeric" value="${esc(auto.income)}" placeholder="0">
   <div class="warnbox" style="margin-top:12px">งบที่ตั้งไว้เดิมทุกหมวดจะถูกแทนที่</div>
   <button class="btn" data-act="autoapply">เติมงบ</button>`;
 }
@@ -474,12 +516,12 @@ function sheetEdit() {
   const list = catList(edit.type).filter(c => !c.hidden || c.id === edit.cat);
   return `
   <div class="panel-h"><h2>แก้ไข${edit.type === 'income' ? 'รายรับ' : 'รายจ่าย'}</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
-  <label class="f" for="e-amt">จำนวนเงิน (บาท)</label>
-  <input id="e-amt" class="in big" data-bind="edit.amount" data-num="1" inputmode="decimal" value="${esc(edit.amount)}">
-  <label class="f" for="e-cat">หมวด</label>
-  <select id="e-cat" class="in" data-bind="edit.cat">${list.map(c => `<option value="${c.id}" ${c.id === edit.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
   <label class="f" for="e-note">โน้ต</label>
   <input id="e-note" class="in" data-bind="edit.note" value="${esc(edit.note)}" maxlength="80">
+  <label class="f" for="e-amt">จำนวนเงิน (บาท)</label>
+  <input id="e-amt" class="in" data-bind="edit.amount" data-num="1" inputmode="decimal" value="${esc(edit.amount)}">
+  <label class="f" for="e-cat">หมวด</label>
+  <select id="e-cat" class="in" data-bind="edit.cat">${list.map(c => `<option value="${c.id}" ${c.id === edit.cat ? 'selected' : ''}>${c.icon || '🏷️'} ${esc(c.name)}</option>`).join('')}</select>
   <label class="f" for="e-date">วันที่</label>
   <input id="e-date" type="date" class="in" data-bind="edit.date" value="${edit.date}">
   <button class="btn" data-act="editsave">บันทึกการแก้ไข</button>
@@ -505,12 +547,13 @@ function sheetSettings() {
     const list = isInc ? S.incCats : S.expCats;
     return head(isInc ? 'หมวดรายรับ' : 'หมวดรายจ่าย', true) + `
     <div class="card" style="padding-top:2px;padding-bottom:2px">${list.map(c => `<div class="crow">
+      <input class="in ei" data-chg="caticon" data-id="${c.id}" value="${esc(c.icon || '')}" maxlength="4" aria-label="อิโมจิ">
       <input class="in" data-chg="catname" data-id="${c.id}" value="${esc(c.name)}" aria-label="ชื่อหมวด">
       ${isInc ? '' : `<select class="in" data-chg="catgroup" data-id="${c.id}" aria-label="กลุ่ม">${['need', 'want', 'save'].map(g => `<option value="${g}" ${c.group === g ? 'selected' : ''}>${GRP[g]}</option>`).join('')}</select>`}
       <label><input type="checkbox" data-chg="cathide" data-id="${c.id}" ${c.hidden ? 'checked' : ''}>ซ่อน</label></div>`).join('')}</div>
     <p class="note">หมวดที่ซ่อนจะไม่แสดงตอนบันทึก แต่รายการเก่ายังอยู่ในรายงาน</p>
     <label class="f" for="nc-name">เพิ่มหมวดใหม่</label>
-    <div class="row2"><input id="nc-name" class="in" data-bind="nc.name" placeholder="ชื่อหมวด" value="${esc(nc.name)}" maxlength="30">
+    <div class="row2"><input class="in ei" data-bind="nc.icon" placeholder="🙂" value="${esc(nc.icon)}" maxlength="4" aria-label="อิโมจิ" style="flex:none;width:60px"><input id="nc-name" class="in" data-bind="nc.name" placeholder="ชื่อหมวด" value="${esc(nc.name)}" maxlength="30">
     ${isInc ? '' : `<select class="in" data-bind="nc.group" style="max-width:110px">${['need', 'want', 'save'].map(g => `<option value="${g}" ${nc.group === g ? 'selected' : ''}>${GRP[g]}</option>`).join('')}</select>`}</div>
     <button class="btn" data-act="addcat">เพิ่มหมวด</button>`;
   }
@@ -524,7 +567,7 @@ function sheetSettings() {
     <h3 class="sec">เพิ่มรายการประจำ</h3>
     <div class="seg"><button class="${rec.type === 'expense' ? 'on' : ''}" data-act="rtype" data-v="expense">รายจ่าย</button><button class="${rec.type === 'income' ? 'on' : ''}" data-act="rtype" data-v="income">รายรับ</button></div>
     <label class="f" for="rc-cat">หมวด</label>
-    <select id="rc-cat" class="in" data-bind="rec.cat">${cats.map(c => `<option value="${c.id}" ${c.id === rec.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+    <select id="rc-cat" class="in" data-bind="rec.cat">${cats.map(c => `<option value="${c.id}" ${c.id === rec.cat ? 'selected' : ''}>${c.icon || '🏷️'} ${esc(c.name)}</option>`).join('')}</select>
     <div class="row2"><div><label class="f" for="rc-amt">จำนวนเงิน (บาท)</label><input id="rc-amt" class="in" data-bind="rec.amount" data-num="1" inputmode="decimal" value="${esc(rec.amount)}"></div>
     <div><label class="f" for="rc-day">ทุกวันที่</label><input id="rc-day" class="in" data-bind="rec.day" data-num="1" inputmode="numeric" value="${esc(rec.day)}"></div></div>
     <label class="f" for="rc-note">โน้ต</label><input id="rc-note" class="in" data-bind="rec.note" value="${esc(rec.note)}" maxlength="80" placeholder="เช่น Netflix">
@@ -540,7 +583,7 @@ function sheetSettings() {
   if (p === 'me') {
     const pr = S.profile;
     return head('ข้อมูลของฉัน', true) + `<div class="card">
-      <p><small>โหมด</small><br>${pr.mode === 'student' ? 'นักเรียน' : 'คนทำงาน'}</p>
+      <p><small>โหมด</small><br>${pr.mode === 'student' ? 'นักเรียน' : 'วัยทำงาน'}</p>
       <p style="margin-top:8px"><small>${pr.mode === 'student' ? 'ชื่อเล่น' : 'ชื่อ'}</small><br>${esc(pr.name)}</p>
       <p style="margin-top:8px"><small>อายุ</small><br>${esc(pr.age)}</p>
       <p style="margin-top:8px"><small>${pr.mode === 'student' ? 'โรงเรียน' : 'เบอร์โทร'}</small><br>${esc(pr.mode === 'student' ? pr.school : pr.phone)}</p>
@@ -610,10 +653,11 @@ function onChg(el) {
     if (v > 0) S.budgets[id] = r2(v); else delete S.budgets[id];
     save(); render(); return;
   }
-  if (k === 'catname' || k === 'catgroup' || k === 'cathide') {
+  if (k === 'catname' || k === 'caticon' || k === 'catgroup' || k === 'cathide') {
     const c = S.expCats.concat(S.incCats).find(x => x.id === id);
     if (!c) return;
     if (k === 'catname') { const n = el.value.trim(); if (n) c.name = n; else el.value = c.name; }
+    if (k === 'caticon') c.icon = el.value.trim() || '🏷️';
     if (k === 'catgroup') c.group = el.value;
     if (k === 'cathide') c.hidden = el.checked;
     save(); render(); renderSheet(); return;
@@ -626,7 +670,7 @@ function onChg(el) {
       try {
         const o = JSON.parse(rd.result);
         if (!o || o.v !== 1 || !Array.isArray(o.tx) || !Array.isArray(o.expCats) || !Array.isArray(o.incCats)) throw new Error('bad');
-        S = o; save(); closeSheet(); render(); toast('กู้คืนข้อมูลแล้ว');
+        S = migrate(o); save(); closeSheet(); render(); toast('กู้คืนข้อมูลแล้ว');
       } catch (err) { toast('ไฟล์นี้กู้คืนไม่ได้'); }
     };
     rd.readAsText(f);
@@ -740,9 +784,10 @@ function act(a, t) {
     case 'addcat': {
       const name = nc.name.trim();
       if (!name) { toast('ใส่ชื่อหมวดก่อน'); return; }
-      if (sheet.page === 'inc') S.incCats.push({ id: 'c_' + uid(), name, hidden: false });
-      else S.expCats.push({ id: 'c_' + uid(), name, group: nc.group, hidden: false });
-      nc.name = ''; save(); render(); renderSheet(); toast('เพิ่มหมวดแล้ว'); break;
+      const icon = nc.icon.trim() || '🏷️';
+      if (sheet.page === 'inc') S.incCats.push({ id: 'c_' + uid(), name, icon, hidden: false });
+      else S.expCats.push({ id: 'c_' + uid(), name, icon, group: nc.group, hidden: false });
+      nc.name = ''; nc.icon = ''; save(); render(); renderSheet(); toast('เพิ่มหมวดแล้ว'); break;
     }
     case 'rtype': rec.type = t.dataset.v; rec.cat = ''; renderSheet(); break;
     case 'addrec': {
