@@ -5,7 +5,6 @@
 // ใส่ลิงก์รับรายชื่อ (เช่น Google Apps Script Web App) ที่นี่ ถ้าเว้นว่าง แอปจะไม่ส่งข้อมูลไปไหน
 // Supabase: ใส่ Project URL และ publishable (anon) key ที่นี่ (ปลอดภัยที่จะเปิดเผย เพราะตารางจำกัดให้เพิ่มข้อมูลได้อย่างเดียว)
 const CONFIG = { SUPABASE_URL: 'https://oxkkcaocvuscfkfejwvd.supabase.co', SUPABASE_KEY: 'sb_publishable_QOFzP9Kw7cvC32q-GnSl0g_oCkrCzUe' };
-const APP_VERSION = 'v18';
 const CONSENT_VERSION = 'v1-2026-11';
 const KEY = 'wealthnote.v1';
 
@@ -23,10 +22,10 @@ const GCOL = {
 // หมวดรายจ่าย: id, ชื่อ, กลุ่ม 50/30/20 (ผู้ใช้แก้กลุ่มและซ่อนหมวดได้ในตั้งค่า)
 const DEFAULT_EXP = [
   ['food', 'อาหาร', 'need', '🍚'], ['clothes', 'เสื้อผ้า', 'need', '👕'], ['travel', 'เดินทาง', 'need', '🚌'],
-  ['home', 'ที่อยู่อาศัย', 'need', '🏠'], ['health', 'ค่ายาและการรักษา', 'need', '💊'], ['insurance', 'ประกัน', 'need', '🛡️'],
+  ['home', 'ที่อยู่อาศัย', 'need', '🏠'], ['health', 'ค่ารักษา', 'need', '💊'], ['insurance', 'ประกัน', 'need', '🛡️'],
   ['saving', 'เงินออม', 'save', '💰'], ['invest', 'ลงทุน', 'save', '📈'],
   ['social', 'สังสรรค์', 'want', '🍻'], ['shop', 'ช้อปปิ้ง', 'want', '🛍️'], ['sub', 'Subscription', 'want', '📱'],
-  ['care', 'ดูแลตัวเอง', 'want', '💆'], ['gift', 'ของขวัญ/ให้ผู้อื่น', 'want', '🎁'],
+  ['care', 'ดูแลตัวเอง', 'want', '💆'], ['gift', 'ของขวัญ', 'want', '🎁'],
   ['exercise', 'ออกกำลังกาย', 'want', '🏃'], ['trip', 'ท่องเที่ยว', 'want', '✈️']
 ];
 const INC_ICONS = { salary: '💼', side: '💻', gift: '🎁', invret: '📈', other: '✨' };
@@ -46,7 +45,6 @@ function autoAvgInfo() {
   const living = (y, m) => monthTx(y, m).filter(t => t.type === 'expense' && groupOf(t.cat) !== 'save').reduce((x, t) => x + t.amount, 0);
   let vals = [1, 2, 3].map(i => { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); return living(d.getFullYear(), d.getMonth()); }).filter(v => v > 0);
   let basis = vals.length > 1 ? 'เฉลี่ย ' + vals.length + ' เดือนที่ผ่านมา' : 'เดือนที่ผ่านมา';
-  if (!vals.length) { const c = living(now.getFullYear(), now.getMonth()); if (c > 0) { vals = [c]; basis = 'เดือนนี้'; } }
   if (!vals.length) return null;
   return { avg: vals.reduce((x, v) => x + v, 0) / vals.length, basis };
 }
@@ -90,8 +88,8 @@ function ratioCard(r) {
     html += row('รายจ่ายต่อรายรับ', 'ไม่รวมออมและลงทุน', p + '%', exStatus(p), '(ดี ไม่เกิน 80% ระวัง 80 ถึง 100%)');
   } else html += '<div class="empty">ใส่รายรับก่อน ถึงจะคำนวณอัตราออมและรายจ่ายต่อรายรับได้</div>';
   const e = emergencyInfo();
-  if (!e) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>ใส่เงินสด/เงินฝากของคุณ เพื่อดูว่าเพียงพอกี่เดือน</small></div><button class="btn ghost sm" data-act="cashset">ใส่ยอดเงิน</button></div>`;
-  else if (!e.avg) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>มีเงิน ${money(e.cash)} ใส่รายจ่ายเฉลี่ยต่อเดือนเอง ไปก่อนได้</small></div><button class="btn ghost sm" data-act="cashset">ใส่ยอด</button></div>`;
+  if (!e) html += `<div class="rt stack"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>ใส่เงินสด/เงินฝาก เพื่อดูว่าพอกี่เดือน</small></div><button class="btn ghost sm" data-act="cashset">ใส่เงินสด/เงินฝาก</button></div>`;
+  else if (!e.avg) html += `<div class="rt stack"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>มีเงิน ${money(e.cash)} ใส่รายจ่ายต่อเดือน เพื่อดูว่าพอกี่เดือน</small></div><button class="btn ghost sm" data-act="cashset">ใส่รายจ่ายต่อเดือน</button></div>`;
   else {
     const m = Math.round(e.months * 10) / 10;
     html += row('เงินสำรองฉุกเฉิน', `${money(e.cash)} ÷ ${money(e.avg)} ต่อเดือน (${e.basis})`, m + ' เดือน', emStatus(e.months), '(ดี 6-12 เดือน พอใช้ 3-5 เดือน ต่ำกว่า 3 หรือเกิน 12 ควรปรับ)');
@@ -102,26 +100,26 @@ function ratioCard(r) {
 
 /* ================= ข้อความแนะนำสไตล์ WDC ================= */
 const TIPS = [
-  ['🧱', 'เริ่มจากรากฐาน เงินสำรองฉุกเฉินช่วยให้แผนอื่นๆ มั่นคงขึ้น'],
-  ['🧺', 'กระจายความเสี่ยง ไข่หลายใบในหลายตะกร้า ช่วยให้อุ่นใจกว่า'],
-  ['🔍', 'จดรายรับ-รายจ่ายไปเรื่อยๆ แล้วคุณจะรู้นิสัยการใช้เงินของตัวเอง'],
-  ['🛡️', 'ประกันมีไว้รับมือความเสี่ยงร้ายแรงที่เงินเก็บรับไม่ไหว'],
-  ['🌙', 'ดูแลสุขภาพและพักผ่อนให้เพียงพอ สุขภาพคือสินทรัพย์ที่ซื้อคืนไม่ได้'],
-  ['✋', 'ก่อนกดจ่าย ลองหยุดคิดสักนิด เงินจะไปอยู่กับสิ่งที่สำคัญจริงๆ'],
-  ['🌱', 'สร้างรายได้หลายทาง ไม่ต้องพึ่งทางเดียว'],
-  ['⏳', 'แบ่งเงินตามเวลาที่ต้องใช้ เงินระยะสั้นเหมาะกับที่ที่ไม่ผันผวนมาก'],
-  ['😴', 'เงินที่นอนเฉยๆ คือ "เงินขี้เกียจ" ลองให้เงินได้ทำงานตามเป้าหมายของมัน'],
-  ['💰', 'ลองแบ่งเงินออมไว้ตั้งแต่ต้นเดือน แล้วที่เหลือใช้ได้อย่างสบายใจ'],
-  ['🎯', 'ให้เงินแต่ละก้อนมีหน้าที่ มีเป้าหมายที่ชัดเจนว่าเก็บไปเพื่ออะไร'],
-  ['🐢', 'สม่ำเสมอสำคัญกว่าจำนวนมาก เริ่มน้อยแต่ไม่หยุด'],
-  ['🕐', 'ของที่อยากได้ ลองรอ 24 ชั่วโมง ถ้ายังอยากได้อยู่ก็ซื้ออย่างสบายใจ'],
-  ['📈', 'ยิ่งเริ่มเร็ว ดอกเบี้ยทบต้นยิ่งช่วยคุณได้นาน'],
-  ['⚖️', 'ก่อนลงทุน ลองรู้ก่อนว่ารับความเสี่ยงได้แค่ไหน และเงินก้อนนี้จะใช้เมื่อไร'],
-  ['🔗', 'หนี้ดอกเบี้ยแพง ถ้าปิดได้ก่อน จะมีเงินเหลือไปสร้างอนาคตมากขึ้น'],
-  ['🚀', 'เมื่อรายได้เพิ่ม ลองเพิ่มเงินออมตามไปด้วย อนาคตจะเติบโตไปพร้อมกัน'],
-  ['🧭', 'การเงินที่ดีเริ่มจากรู้ว่าเงินไปไหน แล้วค่อยออกแบบว่าอยากให้ไปไหน']
+  ['🧱', 'เงินสำรองฉุกเฉิน คือรากฐานของทุกแผน'],
+  ['🧺', 'ไข่หลายใบ ในหลายตะกร้า อุ่นใจกว่า'],
+  ['🔍', 'จดไปเรื่อยๆ แล้วจะรู้นิสัยการใช้เงิน'],
+  ['🛡️', 'ประกันไว้รับความเสี่ยงที่เงินเก็บรับไม่ไหว'],
+  ['🌙', 'สุขภาพคือสินทรัพย์ที่ซื้อคืนไม่ได้'],
+  ['✋', 'ก่อนกดจ่าย หยุดคิดสักนิด'],
+  ['🌱', 'สร้างรายได้หลายทาง ไม่พึ่งทางเดียว'],
+  ['⏳', 'แบ่งเงินตามเวลาที่ต้องใช้'],
+  ['😴', 'ให้เงินที่นอนเฉยๆ ได้ทำงานตามเป้าหมาย'],
+  ['💰', 'แบ่งเงินออมตั้งแต่ต้นเดือน ที่เหลือใช้ได้เลย'],
+  ['🎯', 'ให้เงินทุกก้อนมีหน้าที่และเป้าหมาย'],
+  ['🐢', 'สม่ำเสมอสำคัญกว่าจำนวนมาก'],
+  ['🕐', 'ของที่อยากได้ ลองรอ 24 ชั่วโมงก่อนซื้อ'],
+  ['📈', 'เริ่มเร็ว ดอกเบี้ยทบต้นช่วยได้นานกว่า'],
+  ['⚖️', 'ก่อนลงทุน รู้ก่อนว่ารับความเสี่ยงได้แค่ไหน'],
+  ['🔗', 'หนี้ดอกเบี้ยแพง ปิดได้ก่อนยิ่งดี'],
+  ['🚀', 'รายได้เพิ่ม ลองเพิ่มเงินออมตามไปด้วย'],
+  ['🧭', 'เริ่มจากรู้ว่าเงินไปไหน แล้วค่อยวางแผน']
 ];
-const MILESTONES = { 3: '🎉 ครบ 3 วัน นิสัยดีๆ เริ่มก่อตัวแล้ว', 7: '🏅 ครบ 7 วัน ต่อเนื่องได้ทั้งสัปดาห์ เก่งมาก', 14: '🏆 ครบ 14 วัน สองสัปดาห์เต็ม', 30: '👑 ครบ 30 วัน คุณสร้างนิสัยทางการเงินได้แล้ว' };
+const MILESTONES = { 3: '🎉 ครบ 3 วัน นิสัยดีๆ เริ่มก่อตัว', 7: '🏅 ครบ 7 วัน ต่อเนื่องทั้งสัปดาห์', 14: '🏆 ครบ 14 วัน สองสัปดาห์เต็ม', 30: '👑 ครบ 30 วัน สร้างนิสัยการเงินได้แล้ว' };
 let tipIdx = -1;
 function nextTip(avoid) {
   let i;
@@ -139,6 +137,7 @@ const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.get
 const today = () => ymd(new Date());
 const daysIn = (y, m) => new Date(y, m + 1, 0).getDate(); // m เริ่มที่ 0
 const r2 = n => Math.round(n * 100) / 100;
+const tnum = n => Math.abs(n) >= 1e6 ? (n < 0 ? '-' : '') + compact(Math.abs(n)) : money(n);
 const money = n => r2(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 function compact(n) {
@@ -217,7 +216,7 @@ function migrate2(o) {
     else { o.expCats.splice(bi, 1); if (o.budgets) delete o.budgets.books; }
   }
   const g = o.expCats.find(c => c.id === 'gift');
-  if (g && g.name === 'ของขวัญ') g.name = 'ของขวัญ/ให้ผู้อื่น';
+  if (g && g.name === 'ของขวัญ') g.name = 'ของขวัญ';
   const moved = ['saving', 'invest'].map(id => o.expCats.find(c => c.id === id)).filter(Boolean);
   if (moved.length) {
     o.expCats = o.expCats.filter(c => c.id !== 'saving' && c.id !== 'invest');
@@ -350,7 +349,7 @@ function installCard() {
 function viewRegister() {
   const st = reg.mode === 'student';
   return `
-  <div class="regtop"><img src="assets/logo_teal.png" alt="WDC GROUP"><h1>Wealth Note</h1><p>สมุดรายรับ-รายจ่ายจาก WDC</p><small style="color:var(--mut,#888)">${APP_VERSION}</small></div>
+  <div class="regtop"><img src="assets/logo_teal.png" alt="WDC GROUP"><h1>Wealth Note</h1><p>สมุดรายรับ-รายจ่ายจาก WDC</p></div>
   ${installCard()}
   <div class="seg" role="tablist">
     <button class="${st ? 'on' : ''}" data-act="regmode" data-v="student">นักเรียน</button>
@@ -574,13 +573,13 @@ function viewCal() {
     <button data-act="calnext" aria-label="เดือนถัดไป">›</button></div>
   <div class="cal">${head}${cells}</div>
   <div class="sum3" style="margin-top:8px">
-    <div><small>รายรับ</small><b class="inc">${money(inc)}</b></div>
-    <div><small>รายจ่าย</small><b class="exp">${money(exp)}</b></div>
-    <div><small>รวม</small><b class="${bal < 0 ? 'neg' : 'pos'}">${bal > 0 ? '+' : ''}${money(bal)}</b></div>
+    <div><small>รายรับ</small><b class="inc">${tnum(inc)}</b></div>
+    <div><small>รายจ่าย</small><b class="exp">${tnum(exp)}</b></div>
+    <div><small>รวม</small><b class="${bal < 0 ? 'neg' : 'pos'}">${bal > 0 ? '+' : ''}${tnum(bal)}</b></div>
   </div>
   <div class="sum2">
-    <div><small>ยอดยกมา</small><b class="${prev < 0 ? 'neg' : ''}">${money(prev)}</b></div>
-    <div><small>คงเหลือสะสม</small><b class="${prev + bal < 0 ? 'neg' : 'pos'}">${money(prev + bal)}</b></div>
+    <div><small>ยอดยกมา</small><b class="${prev < 0 ? 'neg' : ''}">${tnum(prev)}</b></div>
+    <div><small>คงเหลือสะสม</small><b class="${prev + bal < 0 ? 'neg' : 'pos'}">${tnum(prev + bal)}</b></div>
   </div>
   </div>
   ${sections}`;
@@ -664,16 +663,16 @@ function viewReport() {
         const pct = r.grp[g] / r.inc * 100;
         return `<div class="g-row"><div class="g-top"><span>${GRP[g]}</span><span><b>${Math.round(pct)}%</b> <small>(เป้า ${TARGET[g]}%)</small></span></div>
           <div class="gbar"><i style="width:${Math.min(pct, 100).toFixed(1)}%"></i><u style="left:calc(${TARGET[g]}% - 1px)"></u></div></div>`;
-      }).join('') + '<p class="note">คิดเป็นสัดส่วนของรายรับในช่วงนี้ เส้นทอง = เป้า 50/30/20</p>'
+      }).join('') + '<p class="note">สัดส่วนของรายรับช่วงนี้ เส้นทอง = เป้า 50/30/20</p>'
     : '<div class="empty">ใส่รายรับก่อน ถึงจะเทียบกับ 50/30/20 ได้</div>';
 
   return `
   <div class="seg"><button class="${mode === 'month' ? 'on' : ''}" data-act="repmode" data-v="month">รายเดือน</button><button class="${mode === 'year' ? 'on' : ''}" data-act="repmode" data-v="year">รายปี</button></div>
   <div class="mnav"><button data-act="repprev" aria-label="ก่อนหน้า">‹</button><b>${title}</b><button data-act="repnext" aria-label="ถัดไป">›</button></div>
   <div class="sum3">
-    <div><small>รายรับ</small><b class="inc">${money(r.inc)}</b></div>
-    <div><small>รายจ่ายรวม</small><b class="exp">${money(r.exp)}</b></div>
-    <div><small>คงเหลือ</small><b class="${r.inc - r.exp < 0 ? 'neg' : 'pos'}">${money(r.inc - r.exp)}</b></div>
+    <div><small>รายรับ</small><b class="inc">${tnum(r.inc)}</b></div>
+    <div><small>รายจ่ายรวม</small><b class="exp">${tnum(r.exp)}</b></div>
+    <div><small>คงเหลือ</small><b class="${r.inc - r.exp < 0 ? 'neg' : 'pos'}">${tnum(r.inc - r.exp)}</b></div>
   </div>
   <h2 class="sec">อัตราส่วนการเงิน</h2><div class="card ratiocard">${ratioCard(r)}</div>
   <h2 class="sec">รายจ่ายตามหมวด</h2><div class="card">${donutBlock}</div>
@@ -729,7 +728,7 @@ function viewBudget() {
   }).join('');
   return `
   <div class="mnav"><button data-act="budprev" aria-label="เดือนก่อน">‹</button><b>${TH_M[m]} ${y + 543}</b><button data-act="budnext" aria-label="เดือนถัดไป">›</button></div>
-  <div class="planrow"><label for="plan-inc">รายรับต่อเดือนที่คาดว่าจะได้</label>
+  <div class="planrow"><label for="plan-inc">รายรับที่คาดว่าจะได้</label>
     <span class="binp"><input id="plan-inc" inputmode="numeric" data-chg="planinc" value="${S.planInc > 0 ? S.planInc : ''}" placeholder="ตั้งรายรับ" aria-label="รายรับต่อเดือนที่คาดว่าจะได้"> บาท</span></div>
   <div class="sum3">
     <div><small>งบรวม</small><b>${money(totB)}</b></div>
@@ -785,7 +784,7 @@ function sheetSettings() {
       <button class="mi" data-act="spage" data-v="rec"><span>รายการประจำ</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="backup"><span>สำรองและกู้คืนข้อมูล</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="me"><span>ข้อมูลของฉัน</span><span>›</span></button>
-      <button class="mi" data-act="spage" data-v="reset"><span>ล้างข้อมูลทั้งหมด</span><span>›</span></button></div><p class="note" style="text-align:center;margin-top:10px">เวอร์ชันแอป ${APP_VERSION}</p>`;
+      <button class="mi" data-act="spage" data-v="reset"><span>ล้างข้อมูลทั้งหมด</span><span>›</span></button></div>`;
   }
   if (p === 'exp' || p === 'inc') {
     const isInc = p === 'inc';

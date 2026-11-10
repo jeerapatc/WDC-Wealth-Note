@@ -335,3 +335,13 @@ label.f{margin-top:8px}
 /* กัน iOS ซูมเองตอนแตะช่องกรอก (ต้อง ≥16px) และกันซูมจากการแตะซ้ำ */
 input,select,textarea,.in,.binp input{font-size:16px!important}
 html,body,button,a,.tile,.row,.chip{touch-action:manipulation}
+
+.sum3{grid-template-columns:repeat(3,minmax(0,1fr))}.sum2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sum3 b,.sum2 b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sum3 small,.sum2 small{white-space:nowrap}
+.legend .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.banner .b1,.banner .b2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.rt.stack{grid-template-columns:minmax(0,1fr)}
+.rt.stack .btn{justify-self:start;width:auto;margin-top:6px;white-space:nowrap;padding:4px 14px}
+.rt-l{min-width:0}
