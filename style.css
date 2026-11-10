@@ -238,3 +238,10 @@ label.f{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 .rt-c{font-size:12px;line-height:1.4;white-space:nowrap}
 .rt-v{font-size:22px}
 .rt-l small{white-space:nowrap;font-size:12.5px}
+.rt{padding:7px 0;gap:0 8px}
+.rt-l b{font-size:14.5px}
+.rt-l small{font-size:12px}
+.rt-v{font-size:17px}
+.rt-s{font-size:12.5px}
+.rt-c{font-size:11.5px}
+.rt .btn.sm,.rt .chip{font-size:13px;min-height:30px}
