@@ -24,7 +24,7 @@ const DEFAULT_EXP = [
   ['home', 'ที่อยู่อาศัย', 'need', '🏠'], ['health', 'ค่ายาและการรักษา', 'need', '💊'], ['insurance', 'ประกัน', 'need', '🛡️'],
   ['saving', 'เงินออม', 'save', '💰'], ['invest', 'ลงทุน', 'save', '📈'],
   ['social', 'สังสรรค์', 'want', '🍻'], ['shop', 'ช้อปปิ้ง', 'want', '🛍️'], ['sub', 'Subscription', 'want', '📱'],
-  ['care', 'ดูแลตัวเอง', 'want', '💆'], ['gift', 'ของขวัญ/ให้ผู้อื่น', 'want', '🎁'], ['wellness', 'Wellness', 'want', '🌿'],
+  ['care', 'ดูแลตัวเอง', 'want', '💆'], ['gift', 'ของขวัญ/ให้ผู้อื่น', 'want', '🎁'],
   ['exercise', 'ออกกำลังกาย', 'want', '🏃'], ['trip', 'ท่องเที่ยว', 'want', '✈️']
 ];
 const INC_ICONS = { salary: '💼', side: '💻', gift: '🎁', invret: '📈', other: '✨' };
@@ -35,6 +35,37 @@ const incomeDefaults = mode => [
   { id: 'invret', name: 'ผลตอบแทนลงทุน' },
   { id: 'other', name: 'อื่นๆ' }
 ].map(c => ({ id: c.id, name: c.name, icon: c.id === 'salary' && mode === 'student' ? '👛' : INC_ICONS[c.id], hidden: false }));
+
+/* ================= ข้อความแนะนำสไตล์ WDC ================= */
+const TIPS = [
+  ['🧱', 'รากฐานก่อนเสมอ: เงินสำรองฉุกเฉินมาก่อนการลงทุน'],
+  ['🧺', 'กระจายความเสี่ยง อย่าใส่ไข่ทุกใบไว้ในตะกร้าใบเดียว'],
+  ['🔍', 'จดรายรับ-รายจ่ายไปเรื่อยๆ แล้วคุณจะรู้นิสัยการใช้เงินของตัวเอง'],
+  ['🛡️', 'ประกันมีไว้รับมือความเสี่ยงร้ายแรงที่เงินเก็บรับไม่ไหว'],
+  ['🌙', 'ดูแลสุขภาพและพักผ่อนให้เพียงพอ สุขภาพคือสินทรัพย์ที่ซื้อคืนไม่ได้'],
+  ['✋', 'ควบคุมรายจ่าย ห้ามใจตัวเองสักนิดก่อนกดจ่าย'],
+  ['🌱', 'สร้างรายได้หลายทาง ไม่ต้องพึ่งทางเดียว'],
+  ['⏳', 'แบ่งเงินตามเวลาที่ต้องใช้ เงินระยะสั้นไม่ควรเสี่ยงสูง'],
+  ['😴', 'ระวัง "เงินขี้เกียจ" เงินที่นอนเฉยๆ ไม่ได้ทำงานให้คุณ'],
+  ['💰', 'จ่ายตัวเองก่อน: ออมก่อนใช้ ไม่ใช่รอใช้เหลือแล้วค่อยออม'],
+  ['🎯', 'ให้เงินแต่ละก้อนมีหน้าที่ มีเป้าหมายที่ชัดเจนว่าเก็บไปเพื่ออะไร'],
+  ['🐢', 'สม่ำเสมอสำคัญกว่าจำนวนมาก เริ่มน้อยแต่ไม่หยุด'],
+  ['🕐', 'ของที่อยากได้ ลองรอ 24 ชั่วโมงก่อนซื้อ แล้วดูว่ายังอยากได้อยู่ไหม'],
+  ['📈', 'ยิ่งเริ่มเร็ว ดอกเบี้ยทบต้นยิ่งช่วยคุณได้นาน'],
+  ['⚖️', 'ก่อนลงทุน ถามตัวเองก่อนว่ารับความเสี่ยงได้แค่ไหน และเงินก้อนนี้ต้องใช้เมื่อไร'],
+  ['🔗', 'หนี้ดอกเบี้ยแพงควรรีบจัดการ ก่อนไปเพิ่มเงินลงทุน'],
+  ['🚀', 'เมื่อรายได้เพิ่ม ให้ออมเพิ่มตาม อย่าปล่อยให้รายจ่ายโตตามรายได้'],
+  ['🧭', 'การเงินที่ดีเริ่มจากรู้ว่าเงินไปไหน แล้วค่อยออกแบบว่าอยากให้ไปไหน']
+];
+const MILESTONES = { 3: '🎉 ครบ 3 วัน นิสัยดีๆ เริ่มก่อตัวแล้ว', 7: '🏅 ครบ 7 วัน ต่อเนื่องได้ทั้งสัปดาห์ เก่งมาก', 14: '🏆 ครบ 14 วัน สองสัปดาห์เต็ม', 30: '👑 ครบ 30 วัน คุณสร้างนิสัยทางการเงินได้แล้ว' };
+let tipIdx = -1;
+function nextTip(avoid) {
+  let i;
+  do { i = Math.floor(Math.random() * TIPS.length); } while (TIPS.length > 1 && i === avoid);
+  return i;
+}
+const addDays = (str, n) => { const [y, m, d] = str.split('-').map(Number); return ymd(new Date(y, m - 1, d + n)); };
+const TH_DAYF = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 
 /* ================= ตัวช่วย ================= */
 const $ = (s, r) => (r || document).querySelector(s);
@@ -68,7 +99,7 @@ function toast(msg) {
 /* ================= ข้อมูล ================= */
 let mem = null;
 const fresh = () => ({
-  v: 1, mig: 2, profile: null,
+  v: 1, mig: 3, profile: null,
   expCats: DEFAULT_EXP.map(([id, name, group, icon]) => ({ id, name, group, icon, hidden: false })),
   incCats: [], tx: [], budgets: {}, recurring: [], logDays: [], skipKeys: []
 });
@@ -80,7 +111,17 @@ function load() {
   return mem || fresh();
 }
 function migrate(o) {
-  if (o.mig >= 2) return o;
+  if (o.mig >= 3) return o;
+  if (!(o.mig >= 2)) migrate2(o);
+  const wi = o.expCats.findIndex(c => c.id === 'wellness');
+  if (wi >= 0) {
+    if ((o.tx || []).some(t => t.cat === 'wellness')) o.expCats[wi].hidden = true;
+    else { o.expCats.splice(wi, 1); if (o.budgets) delete o.budgets.wellness; }
+  }
+  o.mig = 3;
+  return o;
+}
+function migrate2(o) {
   const ic = {};
   DEFAULT_EXP.forEach(c => { ic[c[0]] = c[3]; });
   (o.expCats || []).forEach(c => { if (!c.icon) c.icon = ic[c.id] || '🏷️'; });
@@ -98,8 +139,6 @@ function migrate(o) {
     const ii = o.expCats.findIndex(c => c.id === 'insurance');
     o.expCats.splice(ii >= 0 ? ii + 1 : o.expCats.length, 0, ...moved);
   }
-  o.mig = 2;
-  return o;
 }
 let S = load();
 function save() {
@@ -109,7 +148,7 @@ function save() {
 const now = new Date();
 const ui = {
   tab: 'entry',
-  calY: now.getFullYear(), calM: now.getMonth(),
+  calY: now.getFullYear(), calM: now.getMonth(), calSel: ymd(now),
   repMode: 'month', repY: now.getFullYear(), repM: now.getMonth(),
   budY: now.getFullYear(), budM: now.getMonth()
 };
@@ -294,37 +333,50 @@ function txRow(t) {
     <span class="ico">${catIcon(t.type, t.cat)}</span><span class="r-main"><b>${esc(catName(t.type, t.cat))}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span>
     <span class="amt ${t.type === 'income' ? 'inc' : 'exp'}">${sign}${money(t.amount)}</span></button>`;
 }
+function bannerHTML(mm) {
+  const n = streak();
+  const loggedToday = S.logDays.includes(today());
+  if (tipIdx < 0) {
+    // เลือกข้อความที่เข้ากับสถานการณ์ก่อน ถ้าไม่เข้าเงื่อนไขใดให้สุ่ม
+    if (mm.inc > 0 && mm.grp.save / mm.inc < 0.1) tipIdx = 9;
+    else tipIdx = nextTip(-1);
+  }
+  const line1 = n === 0 ? '✍️ เริ่มบันทึกวันนี้ได้เลย'
+    : (loggedToday ? `🔥 บันทึกต่อเนื่อง ${n} วัน` : `🔥 ต่อเนื่อง ${n} วัน วันนี้ยังไม่ได้บันทึก`);
+  const ms = loggedToday && MILESTONES[n] ? `<div class="b2">${MILESTONES[n]}</div>` : '';
+  const t = TIPS[tipIdx];
+  return `<div class="banner" data-act="tip" role="button" tabindex="0" aria-label="แตะเพื่อดูข้อความอื่น"><div class="b1">${line1}</div>${ms}<div class="b2">${t[0]} ${t[1]}</div></div>`;
+}
+
 function viewEntry() {
   const cats = catList(form.type).filter(c => !c.hidden);
   const list = S.tx.filter(t => t.date === form.date).slice().reverse();
   const sm = summarize(list);
   const cur = new Date();
   const mm = summarize(monthTx(cur.getFullYear(), cur.getMonth()));
-  const n = streak();
-  const loggedToday = S.logDays.includes(today());
-  const banner = n === 0
-    ? '✍️ เริ่มบันทึกวันนี้ได้เลย'
-    : (loggedToday ? `🔥 บันทึกต่อเนื่อง ${n} วัน` : `🔥 ต่อเนื่อง ${n} วัน วันนี้ยังไม่ได้บันทึก`);
   const left = mm.inc - mm.exp;
+  const td = today();
+  const dnote = form.date === td ? '' : `<div class="dnote">${form.date < td ? 'กำลังบันทึกย้อนหลัง' : 'กำลังบันทึกล่วงหน้า'} <button class="chip" data-act="dtoday">กลับมาวันนี้</button></div>`;
   return `
   <div class="hero">
     <small>คงเหลือเดือนนี้ (${TH_M[cur.getMonth()]} ${cur.getFullYear() + 543})</small>
     <b>${money(left)}</b>
     <div class="hero-r"><span>รายรับ <b>${money(mm.inc)}</b></span><span>รายจ่าย <b>${money(mm.exp)}</b></span></div>
   </div>
-  <div class="banner">${banner}</div>
+  ${bannerHTML(mm)}
   <div class="seg inc" role="tablist">
     <button class="${form.type === 'expense' ? 'on' : ''}" data-act="ftype" data-v="expense">รายจ่าย</button>
     <button class="${form.type === 'income' ? 'on' : ''}" data-act="ftype" data-v="income">รายรับ</button>
   </div>
+  <label class="f" for="f-date">วันที่</label>
+  <div class="dstep"><button data-act="dprev" aria-label="วันก่อนหน้า">‹</button><input id="f-date" type="date" class="in" data-bind="form.date" data-rerender="1" value="${form.date}"><button data-act="dnext" aria-label="วันถัดไป">›</button></div>
+  ${dnote}
   <label class="f" for="f-note">โน้ต (ไม่บังคับ)</label>
   <input id="f-note" class="in" data-bind="form.note" placeholder="เช่น ข้าวมันไก่" value="${esc(form.note)}" maxlength="80">
   <label class="f" for="f-amt">จำนวนเงิน (บาท)</label>
   <input id="f-amt" class="in" data-bind="form.amount" data-num="1" inputmode="decimal" placeholder="0" value="${esc(form.amount)}">
   <label class="f">หมวด</label>
-  <div class="tiles">${cats.map(c => `<button class="tile ${form.cat === c.id ? 'sel' : ''} ${form.type}" data-act="pickcat" data-id="${c.id}"><span class="ti">${c.icon || '🏷️'}</span><span>${esc(c.name)}</span></button>`).join('')}</div>
-  <label class="f" for="f-date">วันที่</label>
-  <input id="f-date" type="date" class="in" data-bind="form.date" data-rerender="1" value="${form.date}">
+  <div class="tiles">${cats.map(c => `<button class="tile ${form.cat === c.id ? 'sel' : ''} ${form.type}" data-act="pickcat" data-id="${c.id}"><span class="ti">${c.icon || '🏷️'}</span><span>${esc(c.name)}</span></button>`).join('')}<button class="tile add" data-act="newcat"><span class="ti">➕</span><span>เพิ่มหมวดเอง</span></button></div>
   <div class="stickysave"><button class="btn" data-act="submit">บันทึก</button></div>
   <div class="dayhead"><span class="sec" style="margin:0">รายการวันที่ ${fmtDate(form.date)}</span>
     <small>${list.length ? (sm.inc ? `รับ ${money(sm.inc)} ` : '') + (sm.exp ? `จ่าย ${money(sm.exp)}` : '') : ''}</small></div>
@@ -332,45 +384,69 @@ function viewEntry() {
 }
 
 /* ---------- หน้า 2: ปฏิทิน ---------- */
+function setCalMonth(y, m) {
+  ui.calY = y; ui.calM = m;
+  const d = new Date();
+  ui.calSel = (y === d.getFullYear() && m === d.getMonth()) ? ymd(d) : y + '-' + pad(m + 1) + '-01';
+}
+function fullNum(n) {
+  n = Math.round(n);
+  return n >= 1e6 ? compact(n) : n.toLocaleString('en-US');
+}
 function viewCal() {
   const y = ui.calY, m = ui.calM;
   const map = {};
-  let inc = 0, exp = 0;
-  monthTx(y, m).forEach(t => {
+  S.tx.forEach(t => {
     const o = map[t.date] || (map[t.date] = { i: 0, e: 0 });
-    if (t.type === 'income') { o.i += t.amount; inc += t.amount; } else { o.e += t.amount; exp += t.amount; }
+    if (t.type === 'income') o.i += t.amount; else o.e += t.amount;
   });
-  const first = new Date(y, m, 1).getDay();
+  const first = (new Date(y, m, 1).getDay() + 6) % 7; // จันทร์ = 0
   const n = daysIn(y, m);
+  const total = Math.ceil((first + n) / 7) * 7;
   const td = today();
-  let cells = TH_D.map(d => `<div class="dow">${d}</div>`).join('');
-  for (let i = 0; i < first; i++) cells += '<div class="blank"></div>';
-  for (let d = 1; d <= n; d++) {
-    const key = y + '-' + pad(m + 1) + '-' + pad(d);
+  const head = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'].map((d, i) => `<div class="dow ${i === 5 ? 'sat' : i === 6 ? 'sun' : ''}">${d}</div>`).join('');
+  let cells = '';
+  for (let i = 0; i < total; i++) {
+    const dt = new Date(y, m, 1 - first + i);
+    const key = ymd(dt);
     const o = map[key];
-    cells += `<button class="cell ${key === td ? 'today' : ''} ${o ? 'has' : ''}" data-act="day" data-date="${key}">
-      <span class="dn">${d}</span>${o && o.i ? `<span class="ci">${compact(o.i)}</span>` : ''}${o && o.e ? `<span class="ce">${compact(o.e)}</span>` : ''}</button>`;
+    const out = dt.getMonth() !== m;
+    cells += `<button class="cell ${out ? 'out' : ''} ${key === td ? 'today' : ''} ${key === ui.calSel ? 'sel' : ''}" data-act="selday" data-date="${key}">
+      <span class="dn">${dt.getDate()}</span>${o && o.i ? `<span class="ci">${fullNum(o.i)}</span>` : ''}${o && o.e ? `<span class="ce">${fullNum(o.e)}</span>` : ''}</button>`;
   }
+  const mp = y + '-' + pad(m + 1) + '-';
+  let inc = 0, exp = 0, prev = 0;
+  S.tx.forEach(t => {
+    const v = t.type === 'income' ? t.amount : -t.amount;
+    if (t.date.startsWith(mp)) { if (t.type === 'income') inc += t.amount; else exp += t.amount; }
+    else if (t.date < mp + '01') prev += v;
+  });
   const bal = inc - exp;
+  const sel = ui.calSel;
+  const [sy, sm2, sd] = sel.split('-').map(Number);
+  const dayList = S.tx.filter(t => t.date === sel).slice().reverse();
+  const dsum = summarize(dayList);
+  const dnet = dsum.inc - dsum.exp;
+  const isCur = y === new Date().getFullYear() && m === new Date().getMonth();
   return `
-  <div class="mnav"><button data-act="calprev" aria-label="เดือนก่อน">‹</button><b>${TH_M[m]} ${y + 543}</b><button data-act="calnext" aria-label="เดือนถัดไป">›</button></div>
-  <div class="sum3">
+  <div class="mnav"><button data-act="calprev" aria-label="เดือนก่อน">‹</button>
+    <div class="mtitle"><b>${TH_M[m]} ${y + 543}</b><small>(1 - ${n} ${TH_MS[m]})</small></div>
+    <button data-act="calnext" aria-label="เดือนถัดไป">›</button></div>
+  ${isCur ? '' : '<div style="text-align:center;margin:-4px 0 8px"><button class="chip" data-act="caltoday">ไปเดือนนี้</button></div>'}
+  <div class="cal">${head}${cells}</div>
+  <div class="sum3" style="margin-top:12px">
     <div><small>รายรับ</small><b class="inc">${money(inc)}</b></div>
     <div><small>รายจ่าย</small><b class="exp">${money(exp)}</b></div>
-    <div><small>คงเหลือ</small><b class="${bal < 0 ? 'neg' : 'pos'}">${money(bal)}</b></div>
+    <div><small>รวม</small><b class="${bal < 0 ? 'neg' : 'pos'}">${bal > 0 ? '+' : ''}${money(bal)}</b></div>
   </div>
-  <div class="cal">${cells}</div>
-  <p class="calhint">เขียว = รายรับ, แดง = รายจ่าย (k = พัน) แตะวันที่เพื่อดูรายการ</p>
-  <button class="btn ghost sm" style="margin-top:12px" data-act="caltoday">ไปเดือนนี้</button>`;
-}
-function sheetDay() {
-  const list = S.tx.filter(t => t.date === sheet.date).slice().reverse();
-  const sm = summarize(list);
-  return `
-  <div class="panel-h"><h2>${fmtDate(sheet.date)}</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
-  ${list.length ? `<p class="mute" style="margin-bottom:8px">รับ ${money(sm.inc)} จ่าย ${money(sm.exp)}</p>` : ''}
-  <div class="list">${list.length ? list.map(txRow).join('') : '<div class="empty">ยังไม่มีรายการในวันนี้</div>'}</div>
-  <button class="btn" data-act="addday">เพิ่มรายการวันนี้</button>`;
+  <div class="sum2">
+    <div><small>ยอดยกมา</small><b class="${prev < 0 ? 'neg' : ''}">${money(prev)}</b></div>
+    <div><small>คงเหลือสะสม</small><b class="${prev + bal < 0 ? 'neg' : 'pos'}">${money(prev + bal)}</b></div>
+  </div>
+  <div class="dayhead calday"><span><b>${sd} ${TH_MS[sm2 - 1]} ${sy + 543}</b> <small>(${TH_DAYF[new Date(sy, sm2 - 1, sd).getDay()]})</small></span>
+    <b class="${dnet < 0 ? 'neg' : dnet > 0 ? 'pos' : ''}">${dnet ? (dnet > 0 ? '+' : '') + money(dnet) : ''}</b></div>
+  <div class="list">${dayList.length ? dayList.map(txRow).join('') : '<div class="empty">ยังไม่มีรายการในวันนี้</div>'}</div>
+  <button class="btn ghost" data-act="addday">เพิ่มรายการวันที่นี้</button>`;
 }
 
 /* ---------- หน้า 3: รายงาน ---------- */
@@ -511,6 +587,22 @@ function sheetAuto() {
   <button class="btn" data-act="autoapply">เติมงบ</button>`;
 }
 
+const EMOJIS = ['🍚', '🍜', '🍕', '🍔', '🍰', '☕', '🍺', '🛒', '🧴', '👕', '👟', '👜', '🚌', '🚗', '⛽', '🏠', '💡', '📱', '💻', '🎮', '📚', '🎓', '🎬', '🎵', '⚽', '🏋️', '🧘', '💊', '🏥', '🐶', '🐱', '👶', '🎁', '💍', '✈️', '🏖️', '🛠️', '💼', '💰', '📈', '🏦', '🛡️', '🧾', '❤️', '🌿', '⭐', '🎨', '🙂'];
+function sheetNewCat() {
+  const inc = form.type === 'income';
+  return `
+  <div class="panel-h"><h2>เพิ่มหมวด${inc ? 'รายรับ' : 'รายจ่าย'}ใหม่</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
+  <label class="f" for="nc-name2">ชื่อหมวด</label>
+  <input id="nc-name2" class="in" data-bind="nc.name" placeholder="เช่น ค่าอาหารสัตว์เลี้ยง" value="${esc(nc.name)}" maxlength="30">
+  <label class="f">เลือกอิโมจิ</label>
+  <div class="emogrid">${EMOJIS.map(e => `<button class="emo ${nc.icon === e ? 'sel' : ''}" data-act="pickemoji" data-e="${e}">${e}</button>`).join('')}</div>
+  <label class="f" for="nc-icon">หรือพิมพ์อิโมจิเอง</label>
+  <input id="nc-icon" class="in ei" style="width:80px" data-bind="nc.icon" value="${esc(nc.icon)}" maxlength="4" aria-label="อิโมจิ">
+  ${inc ? '' : `<label class="f">นับเป็นกลุ่มไหน (ใช้คำนวณ 50/30/20)</label>
+  <div class="seg">${['need', 'want', 'save'].map(g => `<button class="${nc.group === g ? 'on' : ''}" data-act="ngroup" data-v="${g}">${GRP[g]}</button>`).join('')}</div>`}
+  <button class="btn" data-act="savenewcat">เพิ่มหมวดและเลือกเลย</button>`;
+}
+
 /* ================= ชีตแก้ไขรายการ ================= */
 function sheetEdit() {
   const list = catList(edit.type).filter(c => !c.hidden || c.id === edit.cat);
@@ -602,7 +694,7 @@ function renderSheet() {
   const old = $('.panel', root);
   const st = old ? old.scrollTop : 0;
   let html = '';
-  if (sheet.kind === 'day') html = sheetDay();
+  if (sheet.kind === 'newcat') html = sheetNewCat();
   else if (sheet.kind === 'edit') html = sheetEdit();
   else if (sheet.kind === 'settings') html = sheetSettings();
   else if (sheet.kind === 'auto') html = sheetAuto();
@@ -704,6 +796,26 @@ function act(a, t) {
 
     /* บันทึก */
     case 'ftype': form.type = t.dataset.v; form.cat = ''; render(); break;
+    case 'tip': tipIdx = nextTip(tipIdx); render(); break;
+    case 'dprev': form.date = addDays(form.date || today(), -1); render(); break;
+    case 'dnext': form.date = addDays(form.date || today(), 1); render(); break;
+    case 'dtoday': form.date = today(); render(); break;
+    case 'newcat': nc = { name: '', group: 'want', icon: '' }; openSheet({ kind: 'newcat' }); break;
+    case 'pickemoji':
+      nc.icon = t.dataset.e;
+      document.querySelectorAll('.emo').forEach(b => b.classList.toggle('sel', b.dataset.e === nc.icon));
+      { const f = $('#nc-icon'); if (f) f.value = nc.icon; }
+      break;
+    case 'ngroup': nc.group = t.dataset.v; renderSheet(); break;
+    case 'savenewcat': {
+      const name = nc.name.trim();
+      if (!name) { toast('ใส่ชื่อหมวดก่อน'); return; }
+      const id = 'c_' + uid(), icon = nc.icon.trim() || '🏷️';
+      if (form.type === 'income') S.incCats.push({ id, name, icon, hidden: false });
+      else S.expCats.push({ id, name, icon, group: nc.group, hidden: false });
+      form.cat = id; nc = { name: '', group: 'want', icon: '' };
+      save(); closeSheet(); render(); toast('เพิ่มหมวดแล้ว'); break;
+    }
     case 'pickcat':
       form.cat = t.dataset.id;
       document.querySelectorAll('.tile').forEach(b => b.classList.toggle('sel', b.dataset.id === form.cat));
@@ -723,7 +835,7 @@ function act(a, t) {
     case 'edit': {
       const x = S.tx.find(q => q.id === t.dataset.id);
       if (!x) return;
-      const back = sheet && sheet.kind === 'day' ? sheet : null;
+      const back = null;
       edit = { id: x.id, type: x.type, cat: x.cat, amount: String(x.amount), note: x.note || '', date: x.date, confirm: false };
       openSheet({ kind: 'edit', back }); break;
     }
@@ -744,11 +856,14 @@ function act(a, t) {
     }
 
     /* ปฏิทิน */
-    case 'calprev': [ui.calY, ui.calM] = shiftMonth(ui.calY, ui.calM, -1); render(); break;
-    case 'calnext': [ui.calY, ui.calM] = shiftMonth(ui.calY, ui.calM, 1); render(); break;
-    case 'caltoday': { const d = new Date(); ui.calY = d.getFullYear(); ui.calM = d.getMonth(); render(); break; }
-    case 'day': openSheet({ kind: 'day', date: t.dataset.date }); break;
-    case 'addday': form.date = sheet.date; ui.tab = 'entry'; closeSheet(); render(); window.scrollTo(0, 0); break;
+    case 'calprev': { const [y, m] = shiftMonth(ui.calY, ui.calM, -1); setCalMonth(y, m); render(); break; }
+    case 'calnext': { const [y, m] = shiftMonth(ui.calY, ui.calM, 1); setCalMonth(y, m); render(); break; }
+    case 'caltoday': { const d = new Date(); setCalMonth(d.getFullYear(), d.getMonth()); render(); break; }
+    case 'selday': {
+      const [y, m] = t.dataset.date.split('-').map(Number);
+      ui.calSel = t.dataset.date; ui.calY = y; ui.calM = m - 1; render(); break;
+    }
+    case 'addday': form.date = ui.calSel; ui.tab = 'entry'; render(); window.scrollTo(0, 0); break;
 
     /* รายงาน */
     case 'repmode': ui.repMode = t.dataset.v; render(); break;
