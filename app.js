@@ -4,7 +4,7 @@
 /* ================= ตั้งค่า ================= */
 // ใส่ลิงก์รับรายชื่อ (เช่น Google Apps Script Web App) ที่นี่ ถ้าเว้นว่าง แอปจะไม่ส่งข้อมูลไปไหน
 // Supabase: ใส่ Project URL และ publishable (anon) key ที่นี่ (ปลอดภัยที่จะเปิดเผย เพราะตารางจำกัดให้เพิ่มข้อมูลได้อย่างเดียว)
-const CONFIG = { SUPABASE_URL: '', SUPABASE_KEY: '' };
+const CONFIG = { SUPABASE_URL: 'https://oxkkcaocvuscfkfejwvd.supabase.co', SUPABASE_KEY: 'sb_publishable_QOFzP9Kw7cvC32q-GnSl0g_oCkrCzUe' };
 const CONSENT_VERSION = 'v1-2026-11';
 const KEY = 'wealthnote.v1';
 
