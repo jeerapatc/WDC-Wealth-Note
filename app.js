@@ -342,8 +342,46 @@ function updateRegBtn() { const b = $('#regbtn'); if (b) b.disabled = !regValid(
 function installCard() {
   if (isStandalone()) return '';
   if (deferredPrompt) return '<div class="install">ติดตั้งแอปลงเครื่อง เพื่อเปิดจากไอคอนได้เลย<br><button class="btn ghost sm" data-act="install" style="margin-top:8px">ติดตั้งแอป</button></div>';
-  if (isIOS()) return '<div class="install"><b>ก่อนเริ่ม:</b> เพิ่มไอคอนลงหน้าจอโฮมก่อน (แตะปุ่มแชร์ใน Safari แล้วเลือก "เพิ่มไปยังหน้าจอโฮม")<br>ไอคอนคือแอปเดียวกัน แค่เปิดง่ายขึ้น ไม่ต้องเข้า Safari แต่ข้อมูลที่กรอกใน Safari จะไม่ตามมาที่ไอคอน จึงควรเพิ่มไอคอนก่อน แล้วค่อยลงทะเบียน</div>';
+  if (isIOS()) return '<div class="install">แนะนำให้เพิ่มไอคอนก่อน ข้อมูลที่กรอกใน Safari อาจไม่ตามไปที่ไอคอน</div>';
   return '<div class="install"><b>ก่อนเริ่ม:</b> เปิดเมนูของเบราว์เซอร์ แล้วเลือก "เพิ่มไปยังหน้าจอหลัก" หรือ "ติดตั้งแอป"</div>';
+}
+
+
+/* ================= หน้าแนะนำเพิ่มเป็นแอป (ก่อนลงทะเบียน) ================= */
+const isInApp = () => /Line\/|FBAN|FBAV|Instagram|MicroMessenger|TikTok/i.test(navigator.userAgent);
+const GIC = {
+  dots: '<span class="gic">⋯</span>',
+  share: '<span class="gic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg></span>',
+  add: '<span class="gic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></span>',
+  down: '<span class="gic">↓</span>'
+};
+function gstep(n, ic, th, en) {
+  return `<div class="gstep"><span class="gn">${n}</span>${ic}<div><b>${th}</b>${en ? `<small>${en}</small>` : ''}</div></div>`;
+}
+function viewGuide() {
+  let steps, title = 'ทำเป็นแอปก่อนเริ่มใช้งาน';
+  if (isInApp()) {
+    title = 'เปิดลิงก์ใน Safari ก่อน';
+    steps = gstep(1, GIC.dots, 'แตะ ⋯ หรือไอคอนเมนูในแอปนี้', 'LINE/Facebook ติดตั้งแอปไม่ได้') +
+      gstep(2, '', 'เลือก "เปิดใน Safari" (หรือ Chrome)', 'Open in Safari') +
+      `<button class="btn ghost sm" data-act="copylink" style="margin-top:8px">คัดลอกลิงก์ไปเปิดเอง</button>`;
+  } else if (isIOS()) {
+    steps = gstep(1, GIC.dots, 'แตะ 3 จุด มุมขวาล่าง', 'More (⋯) ใน Safari') +
+      gstep(2, GIC.share, 'แตะ "แชร์"', 'Share') +
+      gstep(3, GIC.down, 'เลื่อนลง หรือแตะ "ดูเพิ่มเติม"', 'View More') +
+      gstep(4, GIC.add, 'แตะ "เพิ่มไปยังหน้าจอโฮม"', 'Add to Home Screen') +
+      gstep(5, GIC.add, 'แตะ "เพิ่ม" แล้วเปิดแอป', 'Add (จากไอคอนที่หน้าจอ)');
+  } else {
+    steps = (deferredPrompt ? '<button class="btn" data-act="install" style="margin-bottom:8px">ติดตั้งแอป</button>' : '') +
+      gstep(1, GIC.dots, 'แตะเมนู ⋮ มุมขวาบนของ Chrome', 'Menu') +
+      gstep(2, GIC.add, 'แตะ "ติดตั้งแอป"', 'หรือ "เพิ่มไปยังหน้าจอหลัก"') +
+      gstep(3, GIC.add, 'แตะ "ติดตั้ง" แล้วเปิดแอป', 'Install (จากไอคอนที่หน้าจอ)');
+  }
+  return `
+  <div class="regtop"><img src="assets/logo_teal.png" alt="WDC GROUP"><h1>Wealth Note</h1><p>${title}</p></div>
+  <div class="card guide">${steps}</div>
+  <p class="note" style="text-align:center;margin-top:10px">ไอคอนคือแอปเดียวกัน เปิดง่ายไม่ต้องเข้าเบราว์เซอร์<br>ควรทำก่อนกรอกข้อมูล ไม่งั้นข้อมูลอาจไม่ตามไปที่ไอคอน</p>
+  <button class="chip" data-act="skipguide" style="display:block;margin:12px auto 0">ใช้ในเบราว์เซอร์ไปก่อน</button>`;
 }
 
 function viewRegister() {
@@ -437,7 +475,7 @@ function render() {
   const app = $('#app');
   if (!S.profile) {
     app.className = 'reg';
-    app.innerHTML = viewRegister();
+    app.innerHTML = (!isStandalone() && !ui.skipGuide) ? viewGuide() : viewRegister();
     return;
   }
   app.className = '';
@@ -946,6 +984,8 @@ function act(a, t) {
     /* ลงทะเบียน */
     case 'regmode': reg.mode = t.dataset.v; render(); break;
     case 'policy': openSheet({ kind: 'policy' }); break;
+    case 'skipguide': ui.skipGuide = true; render(); break;
+    case 'copylink': try { navigator.clipboard.writeText(location.origin + location.pathname); toast('คัดลอกลิงก์แล้ว'); } catch (e) { toast('คัดลอกไม่ได้ กดค้างที่ลิงก์เพื่อคัดลอก'); } break;
     case 'install': if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; } break;
     case 'register': {
       if (!regValid()) return;
