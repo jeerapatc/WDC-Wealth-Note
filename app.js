@@ -811,11 +811,11 @@ function sheetSettings() {
   if (p === 'cash') {
     const e = emergencyInfo();
     return head('เงินสด/เงินฝากของฉัน', true) + `
-    <p class="mute">กรอกยอดรวมเงินสดและเงินฝากที่มีตอนนี้ (กระเป๋าเงิน บัญชีออมทรัพย์) ไม่รวมเงินลงทุน ใช้คำนวณเงินสำรองฉุกเฉินในหน้ารายงาน</p>
+    <p class="mute one">เงินสดและเงินฝากรวม (ไม่รวมลงทุน)</p>
     ${e ? `<div class="card"><small>ยอดปัจจุบันที่แอปคำนวณ</small><br><b style="font-size:22px">${money(e.cash)}</b></div>` : ''}
     <label class="f" for="cash-amt">${e ? 'ยอดจริงตอนนี้ (บาท)' : 'ยอดตอนนี้ (บาท)'}</label>
     <input id="cash-amt" class="in" data-bind="cashf.amt" data-num="1" inputmode="decimal" placeholder="0" value="${esc(cashf.amt)}">
-    <p class="note">หลังจากนี้แอปจะบวกลบตามรายการที่คุณบันทึก (เงินออมยังนับเป็นเงินฝาก เงินลงทุนไม่นับ) ถ้ายอดจริงต่างไป กรอกใหม่ได้ทุกเมื่อ ข้อมูลนี้อยู่ในเครื่องของคุณเท่านั้น ไม่ส่งให้ WDC</p>
+    <p class="note two">แอปบวกลบตามรายการที่บันทึก (ออมนับ ลงทุนไม่นับ)<br>แก้ยอดได้ทุกเมื่อ เก็บในเครื่องเท่านั้น ไม่ส่งให้ WDC</p>
     <button class="btn" data-act="cashsave">บันทึกยอด</button>`;
   }
   if (p === 'me') {

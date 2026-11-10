@@ -258,3 +258,5 @@ body.kpopen #app{padding-bottom:330px}
 body.kpopen .nav,body.kpopen .stickysave{display:none}
 body.kpopen #toast{bottom:340px}
 #toast{z-index:10}
+.mute.one{font-size:15px;white-space:nowrap}
+.note.two{font-size:13px;line-height:1.5;white-space:nowrap}
