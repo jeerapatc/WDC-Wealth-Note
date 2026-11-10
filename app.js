@@ -234,7 +234,7 @@ const ui = {
   tab: 'entry',
   calY: now.getFullYear(), calM: now.getMonth(), calSel: ymd(now),
   repMode: 'month', repY: now.getFullYear(), repM: now.getMonth(),
-  budY: now.getFullYear(), budM: now.getMonth(), kp: false, native: false
+  budY: now.getFullYear(), budM: now.getMonth(), kp: false, native: true
 };
 let form = { type: 'expense', cat: '', amount: '', note: '', date: today() };
 let reg = { mode: 'worker', name: '', age: '', phone: '', school: '', cash: '', consent: false };
@@ -504,7 +504,7 @@ function viewEntry() {
   <input id="f-note" class="in" data-bind="form.note" placeholder="เช่น ข้าวมันไก่" value="${esc(form.note)}" maxlength="80">
   <label class="f" for="f-amt">จำนวนเงิน (บาท)</label>
   ${ui.native
-    ? `<input id="f-amt" class="in" data-bind="form.amount" data-num="1" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(form.amount)}"><button class="chip" data-act="kpapp" style="margin-top:6px">ใช้แป้นตัวเลขของแอป</button>`
+    ? `<input id="f-amt" class="in" data-bind="form.amount" data-num="1" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(form.amount)}">`
     : `<div id="f-amt-d" class="in amtd ${ui.kp ? 'act' : ''}" data-act="kpopen" role="button" tabindex="0" aria-label="จำนวนเงิน แตะเพื่อกรอก">${form.amount ? esc(form.amount) : '<span class="ph">0</span>'}</div>`}
   <label class="f">หมวด</label>
   <div class="tiles">${cats.map(c => `<button class="tile ${form.cat === c.id ? 'sel' : ''} ${form.type}" data-act="pickcat" data-id="${c.id}"><span class="ti">${c.icon || '🏷️'}</span><span>${esc(c.name)}</span></button>`).join('')}<button class="tile add" data-act="newcat"><span class="ti">➕</span><span>เพิ่มหมวดเอง</span></button></div>
@@ -986,7 +986,7 @@ function act(a, t) {
       const f = $('#f-amt'); if (f) f.focus();
       break;
     }
-    case 'kpapp': ui.native = false; render(); showKp(); break;
+    case 'kpapp': break;
     case 'tip': tipIdx = nextTip(tipIdx); render(); break;
     case 'dprev': form.date = addDays(form.date || today(), -1); render(); break;
     case 'dnext': form.date = addDays(form.date || today(), 1); render(); break;
@@ -1021,7 +1021,7 @@ function act(a, t) {
       if (!S.logDays.includes(today())) S.logDays.push(today());
       save();
       form.amount = ''; form.note = ''; form.cat = '';
-      hideKp(); ui.native = false;
+      hideKp(); ui.native = true;
       toast('บันทึกแล้ว'); render(); break;
     }
     case 'edit': {

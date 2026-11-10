@@ -331,3 +331,7 @@ label.f{margin-top:8px}
 .brow.off{padding:7px 0}
 .brow.off .bchk{color:var(--mute)}.brow.off .bchk b{font-weight:500}
 .install{margin-bottom:12px}
+
+/* กัน iOS ซูมเองตอนแตะช่องกรอก (ต้อง ≥16px) และกันซูมจากการแตะซ้ำ */
+input,select,textarea,.in,.binp input{font-size:16px!important}
+html,body,button,a,.tile,.row,.chip{touch-action:manipulation}
