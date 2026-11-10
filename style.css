@@ -227,3 +227,14 @@ label.f{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
 .ar.dim{opacity:.5}.ar input[type=checkbox]{width:22px;height:22px}
 .ar .in.wt{padding:4px 6px;min-height:36px;text-align:center}.ar .av{text-align:right;font-size:14px}
 .ar .an{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.row{padding:8px 12px;min-height:44px;gap:8px}
+.row .ico{font-size:18px;width:26px}
+.row .r-main b{font-size:15.5px;font-weight:600;line-height:1.3}
+.row .r-main small{font-size:13px;line-height:1.25}
+.row .amt{font-size:15.5px}
+.dayhead .sec,.dayhead>span:first-child{font-size:16px}
+.dayhead small{font-size:13px}
+.rt-c{font-size:12px;line-height:1.4;white-space:nowrap}
+.rt-v{font-size:22px}
+.rt-l small{white-space:nowrap;font-size:12.5px}

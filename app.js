@@ -75,14 +75,14 @@ function ratioCard(r) {
   let html = '';
   if (r.inc > 0) {
     const p = Math.round((r.grp.need + r.grp.want) / r.inc * 100);
-    html += row('รายจ่ายต่อรายรับ', 'ไม่รวมออมและลงทุน', p + '%', exStatus(p), 'ดี ไม่เกิน 80%<br>ระวัง 80 ถึง 100%');
+    html += row('รายจ่ายต่อรายรับ', 'ไม่รวมออมและลงทุน', p + '%', exStatus(p), '(ดี ไม่เกิน 80% ระวัง 80 ถึง 100%)');
   } else html += '<div class="empty">ใส่รายรับก่อน ถึงจะคำนวณรายจ่ายต่อรายรับได้</div>';
   const e = emergencyInfo();
   if (!e) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>ใส่เงินสด/เงินฝากของคุณ เพื่อดูว่าเพียงพอกี่เดือน</small></div><button class="btn ghost sm" data-act="cashset">ใส่ยอดเงิน</button></div>`;
   else if (!e.avg) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>มีเงิน ${money(e.cash)} ต้องมีรายจ่ายสักเดือนก่อน ถึงจะคำนวณได้</small></div></div>`;
   else {
     const m = Math.round(e.months * 10) / 10;
-    html += row('เงินสำรองฉุกเฉิน', `เงิน ${money(e.cash)} ÷ รายจ่าย ${money(e.avg)} ต่อเดือน (${e.basis})`, m + ' เดือน', emStatus(e.months), 'ดี 6 ถึง 12 เดือน พอใช้ 3 ถึง 6 เดือน<br>ต่ำกว่า 3 หรือเกิน 12 เดือน ควรปรับ');
+    html += row('เงินสำรองฉุกเฉิน', `${money(e.cash)} ÷ ${money(e.avg)} ต่อเดือน (${e.basis})`, m + ' เดือน', emStatus(e.months), '(ดี 6-12 เดือน พอใช้ 3-5 เดือน ต่ำกว่า 3 หรือเกิน 12 ควรปรับ)');
     html += `<button class="chip" data-act="cashset" style="margin-top:6px">แก้ไขยอดเงินสด/เงินฝาก</button>`;
   }
   return html;
