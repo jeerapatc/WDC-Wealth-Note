@@ -36,6 +36,58 @@ const incomeDefaults = mode => [
   { id: 'other', name: 'อื่นๆ' }
 ].map(c => ({ id: c.id, name: c.name, icon: c.id === 'salary' && mode === 'student' ? '👛' : INC_ICONS[c.id], hidden: false }));
 
+/* ================= อัตราส่วนการเงิน ================= */
+// เงินสด/เงินฝากตอนนี้ = ยอดที่ผู้ใช้กรอก + รายรับ - รายจ่าย ที่บันทึกหลังจากนั้น (หมวด saving ยังอยู่ในเงินฝาก, หมวดอื่นถือว่าออกจากเงินสด)
+function emergencyInfo() {
+  if (!S.cash) return null;
+  const a = S.cash, td = today();
+  let cash = a.amt;
+  S.tx.forEach(t => {
+    if (t.date > td) return;
+    const after = t.ts ? t.ts > a.ts : t.date > a.date;
+    if (!after) return;
+    if (t.type === 'income') cash += t.amount; else if (t.cat !== 'saving') cash -= t.amount;
+  });
+  const now = new Date();
+  const living = (y, m) => monthTx(y, m).filter(t => t.type === 'expense' && groupOf(t.cat) !== 'save').reduce((x, t) => x + t.amount, 0);
+  let vals = [1, 2, 3].map(i => { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); return living(d.getFullYear(), d.getMonth()); }).filter(v => v > 0);
+  let basis = vals.length > 1 ? 'เฉลี่ย ' + vals.length + ' เดือนที่ผ่านมา' : 'เดือนที่ผ่านมา';
+  if (!vals.length) { const c = living(now.getFullYear(), now.getMonth()); if (c > 0) { vals = [c]; basis = 'เดือนนี้'; } }
+  if (!vals.length) return { cash, avg: null };
+  const avg = vals.reduce((x, v) => x + v, 0) / vals.length;
+  return { cash, avg, months: Math.max(0, cash) / avg, basis };
+}
+// เกณฑ์เงินสำรองฉุกเฉินตามที่ WDC กำหนด: ต่ำกว่า 3 เดือน = แย่, 3 ถึงต่ำกว่า 6 = พอใช้, 6-12 = ดี, เกิน 12 = แย่
+function emStatus(m) {
+  if (m < 3) return ['bad', 'ควรเสริม'];
+  if (m < 6) return ['ok', 'พอใช้'];
+  if (m <= 12) return ['good', 'ดี'];
+  return ['bad', 'เกิน 12 เดือน'];
+}
+// รายจ่าย (จำเป็น+อยากได้) ต่อรายรับ ตามกรอบ 50/30/20: ไม่เกิน 80% = ดี, 80-100% = ระวัง, เกิน 100% = ใช้เกินรายได้
+function exStatus(p) {
+  if (p <= 80) return ['good', 'ดี'];
+  if (p <= 100) return ['ok', 'ระวัง'];
+  return ['bad', 'เกินรายได้'];
+}
+function ratioCard(r) {
+  const row = (label, sub, val, st, crit) => `<div class="rt"><div class="rt-l"><b>${label}</b><small>${sub}</small></div><div class="rt-r"><span class="rt-v st-${st[0]}">${val}</span><span class="rt-s st-${st[0]}">${st[1]}</span></div><div class="rt-c">${crit}</div></div>`;
+  let html = '';
+  if (r.inc > 0) {
+    const p = Math.round((r.grp.need + r.grp.want) / r.inc * 100);
+    html += row('รายจ่ายต่อรายรับ', 'ไม่รวมออมและลงทุน', p + '%', exStatus(p), 'ดี ไม่เกิน 80%<br>ระวัง 80 ถึง 100%');
+  } else html += '<div class="empty">ใส่รายรับก่อน ถึงจะคำนวณรายจ่ายต่อรายรับได้</div>';
+  const e = emergencyInfo();
+  if (!e) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>ใส่เงินสด/เงินฝากของคุณ เพื่อดูว่าเพียงพอกี่เดือน</small></div><button class="btn ghost sm" data-act="cashset">ใส่ยอดเงิน</button></div>`;
+  else if (!e.avg) html += `<div class="rt"><div class="rt-l"><b>เงินสำรองฉุกเฉิน</b><small>มีเงิน ${money(e.cash)} ต้องมีรายจ่ายสักเดือนก่อน ถึงจะคำนวณได้</small></div></div>`;
+  else {
+    const m = Math.round(e.months * 10) / 10;
+    html += row('เงินสำรองฉุกเฉิน', `เงิน ${money(e.cash)} ÷ รายจ่าย ${money(e.avg)} ต่อเดือน (${e.basis})`, m + ' เดือน', emStatus(e.months), 'ดี 6 ถึง 12 เดือน พอใช้ 3 ถึง 6 เดือน<br>ต่ำกว่า 3 หรือเกิน 12 เดือน ควรปรับ');
+    html += `<button class="chip" data-act="cashset" style="margin-top:6px">แก้ไขยอดเงินสด/เงินฝาก</button>`;
+  }
+  return html;
+}
+
 /* ================= ข้อความแนะนำสไตล์ WDC ================= */
 const TIPS = [
   ['🧱', 'เริ่มจากรากฐาน เงินสำรองฉุกเฉินช่วยให้แผนอื่นๆ มั่นคงขึ้น'],
@@ -99,7 +151,7 @@ function toast(msg) {
 /* ================= ข้อมูล ================= */
 let mem = null;
 const fresh = () => ({
-  v: 1, mig: 3, profile: null,
+  v: 1, mig: 4, profile: null, cash: null,
   expCats: DEFAULT_EXP.map(([id, name, group, icon]) => ({ id, name, group, icon, hidden: false })),
   incCats: [], tx: [], budgets: {}, recurring: [], logDays: [], skipKeys: []
 });
@@ -111,6 +163,13 @@ function load() {
   return mem || fresh();
 }
 function migrate(o) {
+  if (o.mig >= 4) return o;
+  if (!(o.mig >= 3)) migrate3(o);
+  if (o.cash === undefined) o.cash = null;
+  o.mig = 4;
+  return o;
+}
+function migrate3(o) {
   if (o.mig >= 3) return o;
   if (!(o.mig >= 2)) migrate2(o);
   const wi = o.expCats.findIndex(c => c.id === 'wellness');
@@ -153,13 +212,14 @@ const ui = {
   budY: now.getFullYear(), budM: now.getMonth()
 };
 let form = { type: 'expense', cat: '', amount: '', note: '', date: today() };
-let reg = { mode: 'worker', name: '', age: '', phone: '', school: '', consent: false };
+let reg = { mode: 'worker', name: '', age: '', phone: '', school: '', cash: '', consent: false };
+let cashf = { amt: '' };
 let sheet = null;
 let edit = null;
 let rec = { type: 'expense', cat: '', amount: '', day: '1', note: '' };
 let nc = { name: '', group: 'want', icon: '' };
-let auto = { income: '' };
-const B = { reg: () => reg, form: () => form, edit: () => edit, rec: () => rec, nc: () => nc, auto: () => auto };
+let auto = { income: '', pct: { need: '50', want: '30', save: '20' }, off: {}, w: {} };
+const B = { reg: () => reg, form: () => form, edit: () => edit, rec: () => rec, nc: () => nc, auto: () => auto, cashf: () => cashf };
 
 /* ================= คำนวณ ================= */
 const catList = type => (type === 'income' ? S.incCats : S.expCats);
@@ -274,6 +334,9 @@ function viewRegister() {
   ${st
     ? `<label class="f" for="r-school">โรงเรียน</label><input id="r-school" class="in" data-bind="reg.school" value="${esc(reg.school)}">`
     : `<label class="f" for="r-phone">เบอร์โทร</label><input id="r-phone" class="in" data-bind="reg.phone" inputmode="tel" autocomplete="tel" value="${esc(reg.phone)}">`}
+  <label class="f" for="r-cash">เงินสด/เงินฝากที่มีตอนนี้ (ไม่บังคับ)</label>
+  <input id="r-cash" class="in" data-bind="reg.cash" data-num="1" inputmode="decimal" placeholder="ไว้คำนวณเงินสำรองฉุกเฉิน" value="${esc(reg.cash)}">
+  <p class="note">ยอดนี้เก็บในเครื่องของคุณเท่านั้น ไม่ส่งให้ WDC และกรอกทีหลังได้</p>
   <div class="consent">
     <input type="checkbox" id="r-ok" data-bind="reg.consent" ${reg.consent ? 'checked' : ''}>
     <label for="r-ok">ฉันยินยอมให้ WDC GROUP เก็บและใช้ข้อมูลข้างต้นเพื่อติดต่อกลับให้คำแนะนำด้านการเงิน และได้อ่าน <button type="button" data-act="policy">นโยบายความเป็นส่วนตัว</button> แล้ว</label>
@@ -540,6 +603,7 @@ function viewReport() {
     <div><small>คงเหลือ</small><b class="${r.inc - r.exp < 0 ? 'neg' : 'pos'}">${money(r.inc - r.exp)}</b></div>
   </div>
   <div class="card kpicard"><div class="kpi"><span>💰 อัตราออม <small>(เงินออม + ลงทุน ÷ รายรับ)</small></span><b>${rate}</b></div></div>
+  <h2 class="sec">อัตราส่วนการเงิน</h2><div class="card">${ratioCard(r)}</div>
   <h2 class="sec">รายจ่ายตามหมวด</h2><div class="card">${donutBlock}</div>
   <h2 class="sec">เทียบกับ 50/30/20</h2><div class="card">${g532}</div>
   ${mode === 'month'
@@ -577,14 +641,45 @@ function viewBudget() {
   <button class="btn ghost" style="margin:0 0 12px" data-act="autobud">เติมงบอัตโนมัติ 50/30/20</button>
   <div class="card" style="padding-top:2px;padding-bottom:2px">${rows}</div>`;
 }
+function autoPlan() {
+  const inc = parseFloat(auto.income) || 0;
+  const pct = { need: parseFloat(auto.pct.need) || 0, want: parseFloat(auto.pct.want) || 0, save: parseFloat(auto.pct.save) || 0 };
+  const total = pct.need + pct.want + pct.save;
+  const nb = {}, groups = {};
+  ['need', 'want', 'save'].forEach(g => {
+    const cs = S.expCats.filter(c => !c.hidden && c.group === g && !auto.off[c.id]);
+    const ws = cs.map(c => { const w = parseFloat(auto.w[c.id]); return w > 0 ? w : 1; });
+    const sw = ws.reduce((x, v) => x + v, 0);
+    const gb = inc * pct[g] / 100;
+    groups[g] = { cs, ws, sw, gb };
+    cs.forEach((c, i) => { const v = Math.round(gb * ws[i] / sw / 10) * 10; if (v > 0) nb[c.id] = v; });
+  });
+  return { inc, pct, total, nb, groups };
+}
 function sheetAuto() {
+  const P = autoPlan();
+  const blocks = ['need', 'want', 'save'].map(g => {
+    const all = S.expCats.filter(c => !c.hidden && c.group === g);
+    const G = P.groups[g];
+    return `<div class="ag"><div class="ag-h"><b>${GRP[g]}</b><span><input class="in pct" data-chg="autopct" data-g="${g}" inputmode="numeric" value="${esc(auto.pct[g])}" aria-label="สัดส่วน ${GRP[g]}">%</span></div>
+    ${all.length ? all.map(c => {
+      const on = !auto.off[c.id];
+      const i = G.cs.indexOf(c);
+      return `<div class="ar ${on ? '' : 'dim'}"><input type="checkbox" data-chg="autotick" data-id="${c.id}" ${on ? 'checked' : ''} aria-label="ใช้หมวด ${esc(c.name)}"><span class="an">${c.icon || '🏷️'} ${esc(c.name)}</span>
+      <input class="in wt" data-chg="autow" data-id="${c.id}" inputmode="decimal" value="${esc(auto.w[c.id] || '1')}" ${on ? '' : 'disabled'} aria-label="น้ำหนัก"><span class="av">${on && i >= 0 && P.nb[c.id] ? money(P.nb[c.id]) : '-'}</span></div>`;
+    }).join('') : '<div class="empty">ไม่มีหมวดในกลุ่มนี้</div>'}
+    ${all.length && !G.cs.length ? '<p class="note">ไม่ได้เลือกหมวดในกลุ่มนี้ งบกลุ่มนี้จึงไม่ถูกแจกจ่าย</p>' : ''}</div>`;
+  }).join('');
+  const ok = P.inc > 0 && Math.round(P.total) === 100;
   return `
-  <div class="panel-h"><h2>เติมงบอัตโนมัติ 50/30/20</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
-  <p>แบ่งรายรับต่อเดือนเป็น จำเป็น 50%, อยากได้ 30%, ออม 20% แล้วหารเท่ากันในแต่ละหมวดของกลุ่ม ปัดเป็นหลักสิบบาท เป็นจุดเริ่มต้นให้ปรับเองต่อ</p>
+  <div class="panel-h"><h2>เติมงบอัตโนมัติ</h2><button class="x" data-act="close" aria-label="ปิด">×</button></div>
+  <p class="mute">ติ๊กหมวดที่ใช้ ปรับสัดส่วนของแต่ละกลุ่มได้ (เริ่มต้น 50/30/20) และปรับน้ำหนักในกลุ่มได้ ตัวเลขน้ำหนักมาก หมวดนั้นได้งบมากขึ้น ปัดเป็นหลักสิบบาท</p>
   <label class="f" for="a-inc">รายรับต่อเดือน (บาท)</label>
-  <input id="a-inc" class="in" data-bind="auto.income" data-num="1" inputmode="numeric" value="${esc(auto.income)}" placeholder="0">
+  <input id="a-inc" class="in" data-chg="autoinc" inputmode="numeric" value="${esc(auto.income)}" placeholder="0">
+  <p class="note ${Math.round(P.total) === 100 ? '' : 'neg'}">สัดส่วนรวม ${Math.round(P.total * 10) / 10}% ${Math.round(P.total) === 100 ? '' : '(ต้องรวมเป็น 100%)'}</p>
+  ${blocks}
   <div class="warnbox" style="margin-top:12px">งบที่ตั้งไว้เดิมทุกหมวดจะถูกแทนที่</div>
-  <button class="btn" data-act="autoapply">เติมงบ</button>`;
+  <button class="btn" data-act="autoapply" ${ok ? '' : 'disabled'}>เติมงบ</button>`;
 }
 
 const EMOJIS = ['🍚', '🍜', '🍕', '🍔', '🍰', '☕', '🍺', '🛒', '🧴', '👕', '👟', '👜', '🚌', '🚗', '⛽', '🏠', '💡', '📱', '💻', '🎮', '📚', '🎓', '🎬', '🎵', '⚽', '🏋️', '🧘', '💊', '🏥', '🐶', '🐱', '👶', '🎁', '💍', '✈️', '🏖️', '🛠️', '💼', '💰', '📈', '🏦', '🛡️', '🧾', '❤️', '🌿', '⭐', '🎨', '🙂'];
@@ -629,6 +724,7 @@ function sheetSettings() {
     return head('ตั้งค่า') + `<div class="list">
       <button class="mi" data-act="spage" data-v="exp"><span>หมวดรายจ่าย</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="inc"><span>หมวดรายรับ</span><span>›</span></button>
+      <button class="mi" data-act="spage" data-v="cash"><span>เงินสด/เงินฝากของฉัน</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="rec"><span>รายการประจำ</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="backup"><span>สำรองและกู้คืนข้อมูล</span><span>›</span></button>
       <button class="mi" data-act="spage" data-v="me"><span>ข้อมูลของฉัน</span><span>›</span></button>
@@ -671,6 +767,16 @@ function sheetSettings() {
     <button class="btn" data-act="export">สำรองข้อมูล (บันทึกเป็นไฟล์)</button>
     <label class="btn ghost" style="display:block;text-align:center;cursor:pointer;margin-top:10px">กู้คืนจากไฟล์<input type="file" accept="application/json,.json" data-chg="import" hidden></label>
     <p class="note">การกู้คืนจะแทนที่ข้อมูลปัจจุบันทั้งหมด</p>`;
+  }
+  if (p === 'cash') {
+    const e = emergencyInfo();
+    return head('เงินสด/เงินฝากของฉัน', true) + `
+    <p class="mute">กรอกยอดรวมเงินสดและเงินฝากที่มีตอนนี้ (กระเป๋าเงิน บัญชีออมทรัพย์) ไม่รวมเงินลงทุน ใช้คำนวณเงินสำรองฉุกเฉินในหน้ารายงาน</p>
+    ${e ? `<div class="card"><small>ยอดปัจจุบันที่แอปคำนวณ</small><br><b style="font-size:22px">${money(e.cash)}</b></div>` : ''}
+    <label class="f" for="cash-amt">${e ? 'ยอดจริงตอนนี้ (บาท)' : 'ยอดตอนนี้ (บาท)'}</label>
+    <input id="cash-amt" class="in" data-bind="cashf.amt" data-num="1" inputmode="decimal" placeholder="0" value="${esc(cashf.amt)}">
+    <p class="note">หลังจากนี้แอปจะบวกลบตามรายการที่คุณบันทึก (เงินออมยังนับเป็นเงินฝาก เงินลงทุนไม่นับ) ถ้ายอดจริงต่างไป กรอกใหม่ได้ทุกเมื่อ ข้อมูลนี้อยู่ในเครื่องของคุณเท่านั้น ไม่ส่งให้ WDC</p>
+    <button class="btn" data-act="cashsave">บันทึกยอด</button>`;
   }
   if (p === 'me') {
     const pr = S.profile;
@@ -754,6 +860,10 @@ function onChg(el) {
     if (k === 'cathide') c.hidden = el.checked;
     save(); render(); renderSheet(); return;
   }
+  if (k === 'autoinc') { auto.income = String(el.value).replace(/[^0-9.]/g, ''); renderSheet(); return; }
+  if (k === 'autopct') { auto.pct[el.dataset.g] = String(el.value).replace(/[^0-9.]/g, ''); renderSheet(); return; }
+  if (k === 'autotick') { if (el.checked) delete auto.off[id]; else auto.off[id] = true; renderSheet(); return; }
+  if (k === 'autow') { const w = String(el.value).replace(/[^0-9.]/g, ''); if (parseFloat(w) > 0) auto.w[id] = w; else delete auto.w[id]; renderSheet(); return; }
   if (k === 'import') {
     const f = el.files && el.files[0];
     if (!f) return;
@@ -786,6 +896,8 @@ function act(a, t) {
         consentAt: new Date().toISOString(), consentVersion: CONSENT_VERSION, sent: false
       };
       S.incCats = incomeDefaults(reg.mode);
+      const c0 = parseFloat(reg.cash);
+      if (reg.cash !== '' && c0 >= 0) S.cash = { amt: r2(c0), ts: Date.now(), date: today() };
       save(); submitLead(); render(); window.scrollTo(0, 0); break;
     }
     /* แท็บ */
@@ -796,6 +908,13 @@ function act(a, t) {
 
     /* บันทึก */
     case 'ftype': form.type = t.dataset.v; form.cat = ''; render(); break;
+    case 'cashset': cashf = { amt: '' }; openSheet({ kind: 'settings', page: 'cash' }); break;
+    case 'cashsave': {
+      const v = parseFloat(cashf.amt);
+      if (cashf.amt === '' || !(v >= 0)) { toast('ใส่ยอดเงินก่อน'); return; }
+      S.cash = { amt: r2(v), ts: Date.now(), date: today() };
+      save(); cashf = { amt: '' }; closeSheet(); render(); toast('บันทึกยอดแล้ว'); break;
+    }
     case 'tip': tipIdx = nextTip(tipIdx); render(); break;
     case 'dprev': form.date = addDays(form.date || today(), -1); render(); break;
     case 'dnext': form.date = addDays(form.date || today(), 1); render(); break;
@@ -826,7 +945,7 @@ function act(a, t) {
       if (amt > 1e9) { toast('จำนวนเงินมากเกินไป'); return; }
       if (!form.cat) { toast('เลือกหมวดก่อน'); return; }
       if (!form.date) { toast('เลือกวันที่ก่อน'); return; }
-      S.tx.push({ id: uid(), type: form.type, cat: form.cat, amount: r2(amt), note: form.note.trim(), date: form.date, created: today() });
+      S.tx.push({ id: uid(), type: form.type, cat: form.cat, amount: r2(amt), note: form.note.trim(), date: form.date, created: today(), ts: Date.now() });
       if (!S.logDays.includes(today())) S.logDays.push(today());
       save();
       form.amount = ''; form.note = ''; form.cat = '';
@@ -879,20 +998,14 @@ function act(a, t) {
     case 'budnext': [ui.budY, ui.budM] = shiftMonth(ui.budY, ui.budM, 1); render(); break;
     case 'autobud': {
       const inc = summarize(monthTx(ui.budY, ui.budM)).inc;
-      auto.income = inc > 0 ? String(Math.round(inc)) : '';
+      auto = { income: inc > 0 ? String(Math.round(inc)) : '', pct: { need: '50', want: '30', save: '20' }, off: {}, w: {} };
       openSheet({ kind: 'auto' }); break;
     }
     case 'autoapply': {
-      const inc = parseFloat(auto.income);
-      if (!(inc > 0)) { toast('ใส่รายรับต่อเดือนก่อน'); return; }
-      const nb = {};
-      ['need', 'want', 'save'].forEach(g => {
-        const cs = S.expCats.filter(c => !c.hidden && c.group === g);
-        if (!cs.length) return;
-        const each = Math.round(inc * TARGET[g] / 100 / cs.length / 10) * 10;
-        if (each > 0) cs.forEach(c => { nb[c.id] = each; });
-      });
-      S.budgets = nb; save(); closeSheet(); render(); toast('เติมงบแล้ว'); break;
+      const P = autoPlan();
+      if (!(P.inc > 0)) { toast('ใส่รายรับต่อเดือนก่อน'); return; }
+      if (Math.round(P.total) !== 100) { toast('สัดส่วนต้องรวมเป็น 100%'); return; }
+      S.budgets = P.nb; save(); closeSheet(); render(); toast('เติมงบแล้ว'); break;
     }
 
     /* ตั้งค่า */
