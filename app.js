@@ -3,7 +3,8 @@
 
 /* ================= ตั้งค่า ================= */
 // ใส่ลิงก์รับรายชื่อ (เช่น Google Apps Script Web App) ที่นี่ ถ้าเว้นว่าง แอปจะไม่ส่งข้อมูลไปไหน
-const CONFIG = { LEAD_ENDPOINT: '' };
+// Supabase: ใส่ Project URL และ publishable (anon) key ที่นี่ (ปลอดภัยที่จะเปิดเผย เพราะตารางจำกัดให้เพิ่มข้อมูลได้อย่างเดียว)
+const CONFIG = { SUPABASE_URL: '', SUPABASE_KEY: '' };
 const CONSENT_VERSION = 'v1-2026-11';
 const KEY = 'wealthnote.v1';
 
@@ -294,14 +295,22 @@ function applyRecurring() {
 }
 
 function submitLead() {
-  if (!CONFIG.LEAD_ENDPOINT || !S.profile || S.profile.sent) return;
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_KEY || !S.profile || S.profile.sent) return;
   const p = S.profile;
-  const body = new URLSearchParams({
-    timestamp: new Date().toISOString(), mode: p.mode, name: p.name, age: p.age,
-    phone: p.phone || '', school: p.school || '', consent: 'yes', consent_version: p.consentVersion
-  });
-  fetch(CONFIG.LEAD_ENDPOINT, { method: 'POST', mode: 'no-cors', body })
-    .then(() => { S.profile.sent = true; save(); })
+  const body = {
+    mode: p.mode, name: p.name, age: Math.round(Number(p.age)),
+    phone: p.phone || null, school: p.school || null,
+    consent: true, consent_version: p.consentVersion
+  };
+  fetch(CONFIG.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/leads', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json', apikey: CONFIG.SUPABASE_KEY,
+      Authorization: 'Bearer ' + CONFIG.SUPABASE_KEY, Prefer: 'return=minimal'
+    },
+    body: JSON.stringify(body)
+  })
+    .then(r => { if (r.ok) { S.profile.sent = true; save(); } })
     .catch(() => { /* ลองใหม่ตอนเปิดแอปครั้งหน้า */ });
 }
 
