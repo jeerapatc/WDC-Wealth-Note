@@ -1093,7 +1093,10 @@ function act(a, t) {
     case 'caltoday': { const d = new Date(); setCalMonth(d.getFullYear(), d.getMonth()); render(); break; }
     case 'selday': {
       const [y, m] = t.dataset.date.split('-').map(Number);
-      ui.calSel = t.dataset.date; ui.calY = y; ui.calM = m - 1; render(); window.scrollTo(0, 0); break;
+      const dd = t.dataset.date, nowT = Date.now();
+      if (ui.lastTap && ui.lastTap.d === dd && nowT - ui.lastTap.t < 500) { ui.lastTap = null; form.date = dd; ui.tab = 'entry'; render(); window.scrollTo(0, 0); break; }
+      ui.lastTap = { d: dd, t: nowT };
+      ui.calSel = dd; ui.calY = y; ui.calM = m - 1; render(); window.scrollTo(0, 0); break;
     }
     case 'addday': form.date = ui.calSel; ui.tab = 'entry'; render(); window.scrollTo(0, 0); break;
 
