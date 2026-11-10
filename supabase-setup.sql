@@ -18,3 +18,7 @@ drop policy if exists "anon can insert leads" on public.leads;
 create policy "anon can insert leads" on public.leads
   for insert to anon with check (consent = true);
 -- ไม่มี policy select/update/delete = ดูข้อมูลได้เฉพาะใน Supabase dashboard (เจ้าของโปรเจกต์)
+
+-- สิทธิ์ระดับตาราง: anon เพิ่มข้อมูลได้อย่างเดียว (จำเป็นเมื่อปิด "Automatically expose new tables")
+revoke all on public.leads from anon, authenticated;
+grant insert on public.leads to anon;
