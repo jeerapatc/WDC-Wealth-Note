@@ -1084,6 +1084,7 @@ function act(a, t) {
       const x = S.tx.find(q => q.id === edit.id);
       if (x && x.recurKey) S.skipKeys.push(x.recurKey);
       S.tx = S.tx.filter(q => q.id !== edit.id);
+      if (x && x.created && !S.tx.some(q => q.created === x.created && !q.recurKey)) S.logDays = S.logDays.filter(d => d !== x.created);
       save(); finishEdit('ลบแล้ว'); break;
     }
 
